@@ -22,7 +22,10 @@
       "Bash(docker-compose:*)",
       "Bash(export DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev)",
       "Bash(export DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev)",
-      "Bash(export SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4)"
+      "Bash(export SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4)",
+      "Bash(export OPENAI_API_KEY=dummy_key_for_migration)",
+      "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=dummy_key_for_test python -m pytest tests/ -v)",
+      "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=dummy_key_for_test python -m pytest tests/unit/test_models.py -v)"
     ],
     "deny": [],
     "ask": []

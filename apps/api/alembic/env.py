@@ -15,6 +15,8 @@ from src.models.base import Base
 import src.models.user
 import src.models.processing_job  
 import src.models.hs_code
+import src.models.product_match
+import src.models.billing_transaction
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

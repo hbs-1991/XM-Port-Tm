@@ -5,18 +5,29 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
+  hashedPassword: string;
   role: UserRole;
-  credits: number;
-  isActive: boolean;
+  subscriptionTier: SubscriptionTier;
+  creditsRemaining: number;
+  creditsUsedThisMonth: number;
+  company?: string;
+  country: string;
   createdAt: Date;
-  updatedAt: Date;
+  lastLoginAt?: Date;
+  isActive: boolean;
 }
 
 export enum UserRole {
-  USER = 'user',
-  ADMIN = 'admin',
-  SUPER_ADMIN = 'super_admin'
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+  PROJECT_OWNER = 'PROJECT_OWNER'
+}
+
+export enum SubscriptionTier {
+  FREE = 'FREE',
+  BASIC = 'BASIC',
+  PREMIUM = 'PREMIUM',
+  ENTERPRISE = 'ENTERPRISE'
 }
 
 export interface UserSession {
@@ -35,4 +46,30 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
+}
+
+export interface BillingTransaction {
+  id: string;
+  userId: string;
+  type: BillingTransactionType;
+  amount: number;
+  currency: string;
+  creditsGranted: number;
+  paymentProvider: string;
+  paymentId: string;
+  status: BillingTransactionStatus;
+  createdAt: Date;
+}
+
+export enum BillingTransactionType {
+  CREDIT_PURCHASE = 'CREDIT_PURCHASE',
+  SUBSCRIPTION = 'SUBSCRIPTION',
+  REFUND = 'REFUND'
+}
+
+export enum BillingTransactionStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED'
 }

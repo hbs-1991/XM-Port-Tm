@@ -1,42 +1,57 @@
 """
 Processing job database models
 """
-from sqlalchemy import Column, String, Integer, ForeignKey, Enum, Float, JSON, DateTime
+from sqlalchemy import Column, String, Integer, ForeignKey, Enum, CheckConstraint, Text, DECIMAL, BIGINT
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime
 from sqlalchemy.orm import relationship
-from .base import BaseModel
+from sqlalchemy.sql import func
+from .base import Base
 import enum
+import uuid
 
 
 class ProcessingStatus(enum.Enum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
 
 
-class ProcessingJob(BaseModel):
+class ProcessingJob(Base):
     """Processing job model"""
     __tablename__ = "processing_jobs"
     
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    filename = Column(String, nullable=False)
-    original_filename = Column(String, nullable=False)
-    file_size = Column(Integer, nullable=False)
-    file_path = Column(String, nullable=False)
-    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=func.gen_random_uuid())
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     status = Column(Enum(ProcessingStatus), default=ProcessingStatus.PENDING, nullable=False)
-    progress = Column(Float, default=0.0, nullable=False)
+    input_file_name = Column(String(255), nullable=False)
+    input_file_url = Column(Text, nullable=False)
+    input_file_size = Column(BIGINT, nullable=False)
+    output_xml_url = Column(Text, nullable=True)
+    credits_used = Column(Integer, default=0, nullable=False)
+    processing_time_ms = Column(Integer, nullable=True)
+    total_products = Column(Integer, default=0, nullable=False)
+    successful_matches = Column(Integer, default=0, nullable=False)
+    average_confidence = Column(DECIMAL(3,2), nullable=True)
+    country_schema = Column(String(3), nullable=False)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
     
-    # Processing results
-    extracted_data = Column(JSON)
-    hs_code_matches = Column(JSON)
-    xml_output = Column(String)
-    
-    # Error handling
-    error_message = Column(String)
-    
-    # Completion tracking
-    completed_at = Column(DateTime)
+    # Constraints
+    __table_args__ = (
+        CheckConstraint('input_file_size > 0', name='positive_file_size'),
+        CheckConstraint('credits_used >= 0', name='positive_credits_used'),
+        CheckConstraint('total_products >= 0', name='positive_total_products'),
+        CheckConstraint('successful_matches >= 0', name='positive_successful_matches'),
+        CheckConstraint('average_confidence >= 0 AND average_confidence <= 1', name='valid_confidence_range'),
+        CheckConstraint('length(country_schema) = 3', name='valid_country_schema'),
+        CheckConstraint('processing_time_ms >= 0', name='positive_processing_time'),
+    )
     
     # Relationships
     user = relationship("User", back_populates="processing_jobs")
+    product_matches = relationship("ProductMatch", back_populates="processing_job", cascade="all, delete-orphan")
