@@ -11,6 +11,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 from src.core.config import settings
 from src.models.base import Base
 
+# Import all models directly to ensure they're registered with SQLAlchemy metadata  
+import src.models.user
+import src.models.processing_job  
+import src.models.hs_code
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

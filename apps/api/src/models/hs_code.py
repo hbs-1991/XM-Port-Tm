@@ -3,7 +3,7 @@ HS Code database models
 """
 from sqlalchemy import Column, String, Text, Float
 from sqlalchemy.ext.declarative import declarative_base
-from models.base import BaseModel
+from .base import BaseModel
 
 
 class HSCode(BaseModel):

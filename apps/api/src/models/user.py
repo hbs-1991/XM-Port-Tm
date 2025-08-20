@@ -3,7 +3,7 @@ User database models
 """
 from sqlalchemy import Column, String, Integer, Boolean, Enum
 from sqlalchemy.orm import relationship
-from models.base import BaseModel
+from .base import BaseModel
 import enum
 
 

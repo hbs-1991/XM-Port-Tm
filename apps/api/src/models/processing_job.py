@@ -3,7 +3,7 @@ Processing job database models
 """
 from sqlalchemy import Column, String, Integer, ForeignKey, Enum, Float, JSON, DateTime
 from sqlalchemy.orm import relationship
-from models.base import BaseModel
+from .base import BaseModel
 import enum
 
 

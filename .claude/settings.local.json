@@ -14,7 +14,15 @@
       "Bash(npm run test:*)",
       "Bash(python -m pytest -v)",
       "Bash(python3 -m pytest -v)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(python:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(sudo systemctl stop:*)",
+      "Bash(ss:*)",
+      "Bash(docker-compose:*)",
+      "Bash(export DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev)",
+      "Bash(export DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev)",
+      "Bash(export SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4)"
     ],
     "deny": [],
     "ask": []
