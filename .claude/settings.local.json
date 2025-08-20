@@ -6,7 +6,11 @@
       "mcp__context7__get-library-docs",
       "Bash(md-tree:*)",
       "Bash(npm install:*)",
-      "Bash(sudo npm install -g @kayvan/markdown-tree-parser)"
+      "Bash(sudo npm install -g @kayvan/markdown-tree-parser)",
+      "Bash(mkdir:*)",
+      "Bash(python -m alembic revision:*)",
+      "Bash(python3 -m alembic revision:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

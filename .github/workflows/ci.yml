@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: xm_port_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Node.js dependencies
+      run: npm ci
+
+    - name: Install Python dependencies
+      run: |
+        cd apps/api
+        pip install -r requirements.txt
+
+    - name: Build shared packages
+      run: npm run build --workspace=packages/shared
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Run frontend tests
+      run: npm run test --workspace=apps/web
+
+    - name: Run backend tests
+      run: |
+        cd apps/api
+        pytest
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/xm_port_test
+        REDIS_URL: redis://localhost:6379/0
+        SECRET_KEY: test-secret-key-at-least-32-chars-long
+        OPENAI_API_KEY: test-key
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Run E2E tests
+      run: npm run test:e2e --workspace=apps/web
+      env:
+        CI: true
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: test-results
+        path: |
+          apps/web/test-results/
+          apps/web/playwright-report/
+          apps/api/coverage_html/

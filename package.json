@@ -1,0 +1,46 @@
+{
+  "name": "xm-port",
+  "version": "1.0.0",
+  "description": "XM-Port - AI-powered customs documentation platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"npm run dev --workspace=apps/api\"",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:docker": "./scripts/dev.sh",
+    "build": "npm run build --workspace=packages/shared && npm run build --workspaces --if-present",
+    "build:prod": "./scripts/build.sh",
+    "test": "npm run test --workspaces --if-present",
+    "test:watch": "npm run test:watch --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace=apps/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint --workspaces --if-present -- --fix",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
+    "clean:build": "rm -rf apps/*/.next apps/*/dist packages/*/dist",
+    "db:migrate": "cd apps/api && python -m alembic upgrade head",
+    "db:seed": "python scripts/seed-data.py",
+    "postinstall": "npm run build --workspace=packages/shared"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "eslint": "^8.0.0",
+    "concurrently": "^8.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=10.0.0"
+  },
+  "author": "XM-Port Team",
+  "license": "MIT"
+}

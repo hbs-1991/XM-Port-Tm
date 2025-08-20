@@ -1,0 +1,12 @@
+{
+  "name": "@xm-port/config",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "Shared configuration files for XM-Port monorepo",
+  "files": [
+    "eslint",
+    "typescript", 
+    "tailwind",
+    "jest"
+  ]
+}

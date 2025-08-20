@@ -1,0 +1,74 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build applications
+      run: |
+        npm run build --workspace=packages/shared
+        npm run build --workspace=apps/web
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push Docker images
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY_WEB: xm-port-web
+        ECR_REPOSITORY_API: xm-port-api
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build and push web image
+        docker build -f Dockerfile.web --target production -t $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG
+        
+        # Build and push API image
+        docker build -f Dockerfile.api --target production -t $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
+
+    - name: Deploy to staging
+      run: |
+        # Deploy to staging environment
+        echo "🚀 Deploying to staging..."
+        # Add deployment commands here (e.g., CDK deploy, kubectl, etc.)
+
+    - name: Run smoke tests
+      run: |
+        # Run basic smoke tests against staging
+        echo "🧪 Running smoke tests..."
+        # Add smoke tests here
+
+    - name: Deploy to production
+      if: success()
+      run: |
+        # Deploy to production environment
+        echo "🎉 Deploying to production..."
+        # Add production deployment commands here
