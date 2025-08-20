@@ -6,8 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
-from .api.v1 import auth, processing, admin, ws
-from .core.config import settings
+from src.api.v1 import auth, processing, admin, ws
+from src.core.config import settings
 
 app = FastAPI(
     title="XM-Port API",
