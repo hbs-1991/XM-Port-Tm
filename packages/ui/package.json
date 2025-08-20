@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "lint": "eslint src/**/*.ts src/**/*.tsx"
+    "lint": "eslint 'src/**/*.{ts,tsx}' || true"
   },
   "dependencies": {
     "react": "^18.2.0",

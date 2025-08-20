@@ -14,7 +14,7 @@ const customJestConfig = {
     '<rootDir>/node_modules/',
     '<rootDir>/tests/e2e/',
   ],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@xm-port/shared$': '<rootDir>/../../packages/shared/src',
     '^@xm-port/ui$': '<rootDir>/../../packages/ui/src',

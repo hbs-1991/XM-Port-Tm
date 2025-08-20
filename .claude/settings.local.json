@@ -10,7 +10,11 @@
       "Bash(mkdir:*)",
       "Bash(python -m alembic revision:*)",
       "Bash(python3 -m alembic revision:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npm run test:*)",
+      "Bash(python -m pytest -v)",
+      "Bash(python3 -m pytest -v)",
+      "Bash(npm run lint)"
     ],
     "deny": [],
     "ask": []
