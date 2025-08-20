@@ -13,11 +13,12 @@ redis
 aioredis
 
 # Data Validation
-pydantic
+pydantic[email]
 pydantic-settings
 
 # Authentication & Security
 python-jose[cryptography]
+PyJWT[crypto]
 passlib[bcrypt]
 python-multipart
 

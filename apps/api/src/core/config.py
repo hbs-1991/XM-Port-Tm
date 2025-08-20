@@ -17,7 +17,10 @@ class Settings(BaseSettings):
     
     # Security settings
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    JWT_SECRET_KEY: str  # Separate key for JWT tokens
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes as per spec
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days as per spec
     ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     

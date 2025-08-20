@@ -25,7 +25,21 @@
       "Bash(export SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4)",
       "Bash(export OPENAI_API_KEY=dummy_key_for_migration)",
       "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=dummy_key_for_test python -m pytest tests/ -v)",
-      "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=dummy_key_for_test python -m pytest tests/unit/test_models.py -v)"
+      "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=dummy_key_for_test python -m pytest tests/unit/test_models.py -v)",
+      "Bash(pip install:*)",
+      "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 JWT_SECRET_KEY=test-jwt-secret-key PYTHONPATH=/mnt/d/PROJECTS/XM-PORT/apps/api python -m pytest tests/unit/test_auth_service.py -v)",
+      "Bash(npm test)",
+      "Bash(export SECRET_KEY=test_secret)",
+      "Bash(export JWT_SECRET_KEY=test_jwt_secret)",
+      "Bash(export DATABASE_URL=sqlite:///test.db)",
+      "Bash(export DATABASE_URL_ASYNC=sqlite+aiosqlite:///test.db)",
+      "Bash(export OPENAI_API_KEY=test_key)",
+      "Bash(export SECRET_KEY=\"test_secret_key_that_is_32_chars_long\")",
+      "Bash(export JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\")",
+      "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=dummy_key_for_test python -m pytest apps/api/tests/unit/test_auth_service.py -v)",
+      "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=dummy_key_for_test python -m pytest apps/api/tests/integration/test_auth_api.py -v)",
+      "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=dummy_key_for_test python -m pytest tests/unit/test_auth_service.py -v)",
+      "Bash(SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 JWT_SECRET_KEY=GE3j2VqzbyfloO6oqa4zJqmQcJuMgKdryNUGdnJl0p4 DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=dummy_key_for_test python -m pytest tests/unit/test_auth_service.py -v)"
     ],
     "deny": [],
     "ask": []

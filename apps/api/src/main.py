@@ -4,9 +4,10 @@ XM-Port FastAPI Application Entry Point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
-from api.v1 import auth, processing, admin, ws
-from core.config import settings
+from src.api.v1 import auth, processing, admin, ws
+from src.core.config import settings
 
 app = FastAPI(
     title="XM-Port API",
@@ -17,18 +18,31 @@ app = FastAPI(
 )
 
 # Security middleware
+if settings.is_production:
+    app.add_middleware(HTTPSRedirectMiddleware)
+
 app.add_middleware(
     TrustedHostMiddleware, 
     allowed_hosts=settings.ALLOWED_HOSTS
 )
 
-# CORS middleware
+# CORS middleware with security headers
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "User-Agent",
+        "X-CSRFToken"
+    ],
+    expose_headers=["X-Total-Count", "X-Page-Count"],
+    max_age=3600
 )
 
 # API routes

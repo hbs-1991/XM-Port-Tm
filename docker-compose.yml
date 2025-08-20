@@ -46,6 +46,7 @@ services:
       - DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@postgres:5432/xm_port_dev
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=development-secret-key-at-least-32-chars-long-change-in-production
+      - JWT_SECRET_KEY=development-jwt-secret-key-at-least-32-chars-long-change-in-production
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     volumes:
       - ./apps/api:/app

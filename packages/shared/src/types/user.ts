@@ -6,11 +6,13 @@ export interface User {
   id: string;
   email: string;
   hashedPassword: string;
+  firstName: string;
+  lastName: string;
   role: UserRole;
   subscriptionTier: SubscriptionTier;
   creditsRemaining: number;
   creditsUsedThisMonth: number;
-  company?: string;
+  companyName?: string;
   country: string;
   createdAt: Date;
   lastLoginAt?: Date;
@@ -45,7 +47,9 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  companyName?: string;
 }
 
 export interface BillingTransaction {

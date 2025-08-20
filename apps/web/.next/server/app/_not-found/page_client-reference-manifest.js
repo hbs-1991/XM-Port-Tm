@@ -1,0 +1,1 @@
+globalThis.__RSC_MANIFEST=(globalThis.__RSC_MANIFEST||{});globalThis.__RSC_MANIFEST["/_not-found/page"]={"moduleLoading":{"prefix":"/_next/"},"ssrModuleMapping":{},"edgeSSRModuleMapping":{},"clientModules":{},"entryCSSFiles":{"/mnt/d/PROJECTS/XM-PORT/apps/web/src/":[],"/mnt/d/PROJECTS/XM-PORT/apps/web/src/app/_not-found/page":[]},"rscModuleMapping":{},"edgeRscModuleMapping":{}}
