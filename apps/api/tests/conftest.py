@@ -12,9 +12,9 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from main import app
-from models.base import Base
-from core.config import settings
+from src.main import app
+from src.models.base import Base
+from src.core.config import settings
 
 # Test database URL (in-memory SQLite for fast tests)
 TEST_DATABASE_URL = "sqlite:///./test_xm_port.db"
@@ -56,7 +56,7 @@ def client(db_session):
         finally:
             db_session.close()
     
-    from api.v1.auth import get_db
+    from src.api.v1.auth import get_db
     app.dependency_overrides[get_db] = override_get_db
     
     with TestClient(app) as test_client:

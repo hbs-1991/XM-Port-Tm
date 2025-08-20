@@ -2,7 +2,7 @@
 Unit tests for database models
 """
 import pytest
-from models import User, UserRole, ProcessingJob, ProcessingStatus
+from src.models import User, UserRole, ProcessingJob, ProcessingStatus
 
 
 @pytest.mark.unit

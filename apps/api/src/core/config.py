@@ -3,7 +3,7 @@ Core configuration settings for XM-Port API
 """
 from typing import List
 from pydantic_settings import BaseSettings
-from pydantic import validator
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -47,19 +47,19 @@ class Settings(BaseSettings):
     ENABLE_SWAGGER: bool = True
     ENABLE_METRICS: bool = True
     
-    @validator("SECRET_KEY")
+    @field_validator("SECRET_KEY")
     def validate_secret_key(cls, v):
         if len(v) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters long")
         return v
     
-    @validator("NODE_ENV")
+    @field_validator("NODE_ENV")
     def validate_node_env(cls, v):
         if v not in ["development", "staging", "production"]:
             raise ValueError("NODE_ENV must be one of: development, staging, production")
         return v
     
-    @validator("LOG_LEVEL")
+    @field_validator("LOG_LEVEL")
     def validate_log_level(cls, v):
         if v not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
             raise ValueError("LOG_LEVEL must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL")
