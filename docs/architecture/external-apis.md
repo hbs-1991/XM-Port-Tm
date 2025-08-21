@@ -11,13 +11,30 @@
 **Key Endpoints Used:**
 - Agent execution via `Runner.run()` - AI processing orchestration
 - FileSearchTool vector store queries - HS code similarity search
-- Vector store management - Embedding storage and retrieval
+- Vector store management - External embedding storage and retrieval
+
+**FileSearchTool Configuration:**
+```python
+from agents import Agent, FileSearchTool
+
+agent = Agent(
+    name="HS Code Matcher",
+    tools=[
+        FileSearchTool(
+            max_num_results=5,
+            vector_store_ids=["vs_hs_codes_turkmenistan"],
+        ),
+    ],
+)
+```
 
 **Integration Notes:** 
 - Uses OpenAI Agents SDK for production-ready reliability
-- FileSearchTool provides direct vector store access
+- FileSearchTool provides direct vector store access without local database
 - Built-in retry logic and error handling
 - Session management for conversation context
+- HS codes stored in OpenAI Vector Store (external managed service)
+- No local pgvector database required
 
 ## AWS S3 API
 

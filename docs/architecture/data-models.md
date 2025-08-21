@@ -135,17 +135,18 @@ interface ProductMatch {
 
 ## HSCode
 
-**Purpose:** Harmonized System codes database with AI embeddings for similarity search.
+**Purpose:** Harmonized System codes retrieved from OpenAI Vector Store for AI-powered product matching.
 
 **Key Attributes:**
-- code: string - HS code (primary key)
-- description: string - Official description
+- code: string - HS code identifier
+- description: string - Official HS code description
 - chapter: string - HS chapter classification
 - section: string - HS section classification
-- embedding: vector - OpenAI embedding for similarity
 - country: string - Country-specific variations
-- isActive: boolean - Current validity
-- updatedAt: DateTime - Last update timestamp
+- confidence: number - AI matching confidence score (0-1)
+
+**Data Source:** OpenAI Vector Store with FileSearchTool integration
+**Search Method:** AI-powered semantic search using OpenAI Agents SDK
 
 ### TypeScript Interface
 ```typescript
@@ -154,15 +155,14 @@ interface HSCode {
   description: string;
   chapter: string;
   section: string;
-  embedding: number[]; // Vector embedding
   country: string;
-  isActive: boolean;
-  updatedAt: Date;
+  confidence: number; // AI matching confidence
 }
 ```
 
 ### Relationships
-- One-to-many with ProductMatch
+- One-to-many with ProductMatch (via matchedHSCode field)
+- External data source: OpenAI Vector Store
 
 ## BillingTransaction
 

@@ -30,25 +30,6 @@ CREATE INDEX idx_users_country ON users(country);
 CREATE INDEX idx_users_subscription_tier ON users(subscription_tier);
 CREATE INDEX idx_users_created_at ON users(created_at);
 
--- HS Codes table with pgvector for AI similarity search
-CREATE EXTENSION IF NOT EXISTS vector;
-
-CREATE TABLE hs_codes (
-    code VARCHAR(10) PRIMARY KEY,
-    description TEXT NOT NULL,
-    chapter VARCHAR(2) NOT NULL,
-    section VARCHAR(2) NOT NULL,
-    embedding vector(1536), -- OpenAI embedding size
-    country VARCHAR(3) NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Vector similarity search indexes (HNSW for performance)
-CREATE INDEX ON hs_codes USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX ON hs_codes USING hnsw (embedding vector_l2_ops);
-CREATE INDEX idx_hs_codes_country_active ON hs_codes(country, is_active) WHERE is_active = true;
-
 -- Processing jobs with partitioning for performance
 CREATE TABLE processing_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

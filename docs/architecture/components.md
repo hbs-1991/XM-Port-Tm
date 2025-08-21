@@ -47,18 +47,18 @@
 
 ## AI Matching Service
 
-**Responsibility:** HS code matching using OpenAI Agents SDK with fallback to vector similarity search
+**Responsibility:** HS code matching using OpenAI Agents SDK with FileSearchTool for Vector Store queries
 
 **Key Interfaces:**
-- Product description to HS code matching API
+- Product description to HS code matching API via OpenAI Agents SDK
+- AI-powered semantic search using FileSearchTool
 - Confidence scoring and alternative suggestions
-- Vector similarity search for fallback scenarios
 - Batch processing for multiple products
 - Performance monitoring and logging
 
-**Dependencies:** OpenAI Agents SDK, OpenAI Vector Store, PostgreSQL pgvector, HS code database
+**Dependencies:** OpenAI Agents SDK, OpenAI Vector Store (external), FileSearchTool
 
-**Technology Stack:** OpenAI Agents SDK, FileSearchTool, pgvector for similarity search, Python async processing
+**Technology Stack:** OpenAI Agents SDK, FileSearchTool with vector_store_ids configuration, Python async processing
 
 ## XML Generation Service
 
@@ -140,7 +140,6 @@ graph TB
 
     AIMatch --> OpenAI
     AIMatch --> VectorStore
-    AIMatch --> DB
 
     XMLGen --> S3
     XMLGen --> DB

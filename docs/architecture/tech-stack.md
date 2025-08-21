@@ -11,7 +11,7 @@
 | Backend Language | Python | 3.11+ | AI/ML ecosystem compatibility | Best ecosystem for AI integrations, excellent async support |
 | Backend Framework | FastAPI | 0.108+ | High-performance async Python web framework | Automatic OpenAPI docs, excellent async support, perfect for AI workloads |
 | API Style | REST + WebSocket | HTTP/1.1 + WS | RESTful APIs with real-time capabilities | Simple, well-understood pattern with real-time file processing updates |
-| Database | PostgreSQL | 15+ | Primary data store with vector search | ACID compliance, pgvector extension for AI similarity search |
+| Database | PostgreSQL | 15+ | Primary data store | ACID compliance, robust relational database for application data |
 | Cache | Redis | 7.2+ | Caching and session management | High-performance caching, real-time counters, session storage |
 | File Storage | AWS S3 | Latest | Scalable file storage | Industry standard, excellent CDN integration, cost-effective |
 | Authentication | NextAuth.js | 4.24+ | Full-stack authentication solution | Seamless Next.js integration, multiple providers, JWT + database sessions |
@@ -29,8 +29,8 @@
 **Key Technology Integration Points:**
 
 **AI/ML Stack:**
-- **OpenAI Agents SDK** (Latest): Production-ready AI agent orchestration
-- **OpenAI Vector Store**: Managed vector storage for HS code embeddings  
-- **pgvector**: PostgreSQL extension for local vector similarity search
+- **OpenAI Agents SDK** (Latest): Production-ready AI agent orchestration for HS code matching
+- **FileSearchTool**: Built-in vector store integration with OpenAI Agents SDK
+- **OpenAI Vector Store**: External managed vector storage for HS code embeddings (no local database required)
 - **Pydantic** (2.5+): Data validation and settings management
 - **xsdata** (23.8+): XSD schema parsing and XML generation
