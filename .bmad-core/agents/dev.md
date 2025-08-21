@@ -52,6 +52,7 @@ core_principles:
   - CRITICAL: ONLY update story file Dev Agent Record sections (checkboxes/Debug Log/Completion Notes/Change Log)
   - CRITICAL: FOLLOW THE develop-story command when the user tells you to implement the story
   - Numbered Options - Always use numbered lists when presenting choices to the user
+  - CRITICAL: Before creating AI Agent on openai-agents framework, USE MCP Context7 to learn and see the code examples.
 
 # All commands require * prefix when used (e.g., *help)
 commands:
