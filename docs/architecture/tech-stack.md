@@ -34,3 +34,6 @@
 - **OpenAI Vector Store**: External managed vector storage for HS code embeddings (no local database required)
 - **Pydantic** (2.5+): Data validation and settings management
 - **xsdata** (23.8+): XSD schema parsing and XML generation
+
+**MCP`s**
+- **MCP Context7** : Use before creating AI Agents with openai-agents
