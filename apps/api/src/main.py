@@ -8,6 +8,7 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from src.api.v1 import auth, processing, admin, ws
 from src.core.config import settings
+from src.middleware import setup_rate_limiting
 
 app = FastAPI(
     title="XM-Port API",
@@ -44,6 +45,9 @@ app.add_middleware(
     expose_headers=["X-Total-Count", "X-Page-Count"],
     max_age=3600
 )
+
+# Setup rate limiting
+setup_rate_limiting(app)
 
 # API routes
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])

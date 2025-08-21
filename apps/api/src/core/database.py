@@ -43,3 +43,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+async def init_db():
+    """Initialize database tables"""
+    # Import models to ensure they are registered
+    from src.models import user, processing_job, hs_code, product_match, billing_transaction
+    
+    # This would be used for creating tables if needed
+    # In practice, we use Alembic migrations
+    pass

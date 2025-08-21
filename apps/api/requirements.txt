@@ -8,9 +8,10 @@ alembic
 sqlalchemy
 asyncpg
 
-# Caching
+# Caching & Rate Limiting
 redis
 aioredis
+slowapi
 
 # Data Validation
 pydantic[email]

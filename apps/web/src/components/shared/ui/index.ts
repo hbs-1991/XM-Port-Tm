@@ -8,3 +8,6 @@ export { AlertDialog, AlertDialogPortal, AlertDialogOverlay, AlertDialogTrigger,
 export { Toast, ToastProvider, ToastViewport, ToastClose, ToastTitle, ToastDescription, ToastAction } from "./toast"
 export { Toaster } from "./toaster"
 export { Label } from "./label"
+export { Progress } from "./progress"
+export { Badge } from "./badge"
+export { Alert, AlertDescription, AlertTitle } from "./alert"

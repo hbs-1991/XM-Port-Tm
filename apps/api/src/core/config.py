@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     AWS_REGION: str = "us-west-2"
     AWS_S3_BUCKET: str = ""
     
+    # File upload settings
+    ALLOW_S3_FALLBACK: bool = True  # Allow fallback to local storage when S3 unavailable
+    
     # Monitoring settings
     LOG_LEVEL: str = "INFO"
     SENTRY_DSN: str = ""
@@ -83,3 +86,8 @@ class Settings(BaseSettings):
 
 # Create settings instance with validation
 settings = Settings()
+
+# Getter function for dependency injection
+def get_settings() -> Settings:
+    """Get settings instance for dependency injection"""
+    return settings
