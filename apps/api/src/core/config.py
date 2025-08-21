@@ -1,9 +1,9 @@
 """
 Core configuration settings for XM-Port API
 """
-from typing import List
+from typing import List, Union
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
+from pydantic import field_validator, Field
 
 
 class Settings(BaseSettings):
@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    ALLOWED_HOSTS: Union[str, List[str]] = ["localhost", "127.0.0.1"]
+    CORS_ORIGINS: Union[str, List[str]] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
     # Database settings
     DATABASE_URL: str
@@ -33,10 +33,12 @@ class Settings(BaseSettings):
     
     # OpenAI settings
     OPENAI_API_KEY: str
+    OPENAI_VECTOR_STORE_ID: str = "vs_hs_codes_turkmenistan"
+    OPENAI_HSCODE_DATA_FILE_ID: str = ""
     
     # File storage settings
     UPLOAD_MAX_SIZE: int = 10 * 1024 * 1024  # 10MB
-    UPLOAD_ALLOWED_EXTENSIONS: List[str] = [".pdf", ".xlsx", ".xls", ".csv"]
+    UPLOAD_ALLOWED_EXTENSIONS: Union[str, List[str]] = [".pdf", ".xlsx", ".xls", ".csv"]
     
     # AWS settings (optional for development)
     AWS_ACCESS_KEY_ID: str = ""
@@ -71,9 +73,11 @@ class Settings(BaseSettings):
             raise ValueError("LOG_LEVEL must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL")
         return v
     
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields from frontend config
         
     @property
     def is_production(self) -> bool:
@@ -82,6 +86,27 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.NODE_ENV == "development"
+    
+    @property
+    def allowed_hosts_list(self) -> List[str]:
+        """Get ALLOWED_HOSTS as a list"""
+        if isinstance(self.ALLOWED_HOSTS, str):
+            return [host.strip() for host in self.ALLOWED_HOSTS.split(",")]
+        return self.ALLOWED_HOSTS
+    
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Get CORS_ORIGINS as a list"""
+        if isinstance(self.CORS_ORIGINS, str):
+            return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+        return self.CORS_ORIGINS
+    
+    @property
+    def upload_extensions_list(self) -> List[str]:
+        """Get UPLOAD_ALLOWED_EXTENSIONS as a list"""
+        if isinstance(self.UPLOAD_ALLOWED_EXTENSIONS, str):
+            return [ext.strip() for ext in self.UPLOAD_ALLOWED_EXTENSIONS.split(",")]
+        return self.UPLOAD_ALLOWED_EXTENSIONS
 
 
 # Create settings instance with validation
