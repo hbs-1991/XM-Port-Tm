@@ -46,3 +46,15 @@ pytest-cov
 
 # Logging
 structlog
+
+# S3
+boto3
+
+# Pandas
+pandas
+
+# Mimetypes
+mimetype
+
+# Botocore
+botocore

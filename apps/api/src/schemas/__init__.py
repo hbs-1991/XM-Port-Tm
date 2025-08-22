@@ -1,11 +1,11 @@
 """
 Pydantic schemas for request/response validation
 """
-from .auth import LoginRequest, LoginResponse, RegisterRequest, UserResponse
+from .auth import UserLoginRequest, TokenResponse, UserRegisterRequest, UserResponse
 
 __all__ = [
-    "LoginRequest",
-    "LoginResponse", 
-    "RegisterRequest",
+    "UserLoginRequest",
+    "TokenResponse", 
+    "UserRegisterRequest",
     "UserResponse"
 ]

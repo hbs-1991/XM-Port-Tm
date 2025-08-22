@@ -52,7 +52,7 @@ Your role is to:
 Always prioritize accuracy over speed, and provide detailed reasoning for your classification decisions."""
 
     # FileSearchTool Configuration  
-    MAX_SEARCH_RESULTS = 5
+    MAX_SEARCH_RESULTS = 3
     SEARCH_CONFIDENCE_THRESHOLD = 0.7
     
     @classmethod
