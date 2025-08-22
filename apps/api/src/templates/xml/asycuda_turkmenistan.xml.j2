@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Declaration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <DeclarationHeader>
+        <DeclarationId>{{ declaration.id }}</DeclarationId>
+        <DeclarationReference>{{ declaration.reference }}</DeclarationReference>
+        <DeclarationDate>{{ declaration.created_at.strftime('%Y-%m-%d') }}</DeclarationDate>
+        <DeclarationTime>{{ declaration.created_at.strftime('%H:%M:%S') }}</DeclarationTime>
+        <CountryCode>{{ declaration.country_code }}</CountryCode>
+        <Currency>{{ declaration.currency }}</Currency>
+        <ExchangeRate>{{ declaration.exchange_rate }}</ExchangeRate>
+        
+        <!-- Declaration Summary -->
+        <DeclarationSummary>
+            <TotalItems>{{ product_count }}</TotalItems>
+            <TotalQuantity>{{ summary.total_quantity }}</TotalQuantity>
+            <TotalValue>{{ summary.total_value }}</TotalValue>
+            <AverageConfidence>{{ "%.2f"|format(summary.average_confidence) }}</AverageConfidence>
+            <HSCodeCount>{{ summary.hs_code_count }}</HSCodeCount>
+        </DeclarationSummary>
+        
+        <!-- Generation Metadata -->
+        <GenerationInfo>
+            <Software>{{ generation.software }}</Software>
+            <Version>{{ generation.version }}</Version>
+            <GeneratedAt>{{ generation.timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') }}</GeneratedAt>
+            <ProcessingJobId>{{ job.id }}</ProcessingJobId>
+        </GenerationInfo>
+    </DeclarationHeader>
+    
+    <DeclarationItems>
+        {% for product in products %}
+        <DeclarationItem>
+            <ItemNumber>{{ loop.index }}</ItemNumber>
+            <ProductInfo>
+                <Description>{{ product.product_description|e }}</Description>
+                <HSCode>{{ product.matched_hs_code }}</HSCode>
+                <Quantity>{{ product.quantity }}</Quantity>
+                <UnitOfMeasure>{{ product.unit_of_measure|e }}</UnitOfMeasure>
+                <Value>{{ product.value }}</Value>
+                <OriginCountry>{{ product.origin_country }}</OriginCountry>
+            </ProductInfo>
+            
+            <QualityInfo>
+                <ConfidenceScore>{{ "%.2f"|format(product.confidence_score) }}</ConfidenceScore>
+                <RequiresManualReview>{{ product.requires_manual_review|lower }}</RequiresManualReview>
+                <UserConfirmed>{{ product.user_confirmed|lower }}</UserConfirmed>
+                {% if product.alternative_hs_codes %}
+                <AlternativeHSCodes>
+                    {% for alt_code in product.alternative_hs_codes %}
+                    <AlternativeCode>{{ alt_code }}</AlternativeCode>
+                    {% endfor %}
+                </AlternativeHSCodes>
+                {% endif %}
+                {% if product.vector_store_reasoning %}
+                <AIReasoning>{{ product.vector_store_reasoning|e }}</AIReasoning>
+                {% endif %}
+            </QualityInfo>
+            
+            <!-- ASYCUDA-specific fields -->
+            <CustomsInfo>
+                <ItemValue>{{ product.value }}</ItemValue>
+                <StatisticalValue>{{ product.value }}</StatisticalValue>
+                <NetWeight>{{ product.quantity }}</NetWeight>
+                <GrossWeight>{{ product.quantity * 1.1 }}</GrossWeight>
+                <PackageType>CTN</PackageType>
+                <NumberOfPackages>1</NumberOfPackages>
+            </CustomsInfo>
+            
+            <TaxInfo>
+                <DutyRate>0.00</DutyRate>
+                <VATRate>18.00</VATRate>
+                <ExciseRate>0.00</ExciseRate>
+            </TaxInfo>
+        </DeclarationItem>
+        {% endfor %}
+    </DeclarationItems>
+    
+    <!-- HS Code Summary -->
+    <HSCodeSummary>
+        {% for hs_code, summary_data in summary.hs_code_summary.items() %}
+        <HSCodeGroup>
+            <HSCode>{{ hs_code }}</HSCode>
+            <ItemCount>{{ summary_data.count }}</ItemCount>
+            <TotalQuantity>{{ summary_data.total_quantity }}</TotalQuantity>
+            <TotalValue>{{ summary_data.total_value }}</TotalValue>
+        </HSCodeGroup>
+        {% endfor %}
+    </HSCodeSummary>
+    
+    <!-- Declaration Footer -->
+    <DeclarationFooter>
+        <DeclarationComplete>true</DeclarationComplete>
+        <ValidationStatus>PASSED</ValidationStatus>
+        <ProcessedAt>{{ generation.timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') }}</ProcessedAt>
+        
+        <!-- Electronic Signature Placeholder -->
+        <ElectronicSignature>
+            <SignatureMethod>XM-Port-Generated</SignatureMethod>
+            <SignatureValue>{{ job.id|hash('md5') }}</SignatureValue>
+            <SignedAt>{{ generation.timestamp.strftime('%Y-%m-%dT%H:%M:%SZ') }}</SignedAt>
+        </ElectronicSignature>
+    </DeclarationFooter>
+</Declaration>
