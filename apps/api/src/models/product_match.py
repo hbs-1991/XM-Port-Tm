@@ -24,6 +24,7 @@ class ProductMatch(Base):
     matched_hs_code = Column(String(10), nullable=False)
     confidence_score = Column(DECIMAL(3,2), nullable=False)
     alternative_hs_codes = Column(ARRAY(String), nullable=True)
+    vector_store_reasoning = Column(Text, nullable=True)
     requires_manual_review = Column(Boolean, default=False, nullable=False)
     user_confirmed = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)

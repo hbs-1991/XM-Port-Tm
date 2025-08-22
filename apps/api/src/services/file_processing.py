@@ -4,6 +4,10 @@ File processing service for handling CSV and XLSX file uploads
 import csv
 import io
 import json
+import logging
+import time
+from decimal import Decimal
+from loguru import logger
 import mimetypes
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
@@ -24,6 +28,8 @@ from src.schemas.processing import (
     ProcessingJobCreate,
     ValidationSummary
 )
+from src.services.hs_matching_service import hs_matching_service, HSCodeMatchRequest
+from src.models.product_match import ProductMatch
 
 settings = get_settings()
 
@@ -864,3 +870,350 @@ class FileProcessingService:
                 status_code=500,
                 detail=f"Error updating job data: {str(e)}"
             )
+
+    async def process_products_with_hs_matching(
+        self,
+        processing_job: ProcessingJob,
+        products_data: List[Dict[str, Any]],
+        country_schema: str = "default"
+    ) -> Tuple[List[ProductMatch], List[str]]:
+        """
+        Process products data and match HS codes using the HS matching service
+        
+        Args:
+            processing_job: The processing job to associate matches with
+            products_data: List of validated product data dictionaries
+            country_schema: Country schema for HS code matching
+            
+        Returns:
+            Tuple of (created ProductMatch records, error messages)
+        """
+        created_matches = []
+        error_messages = []
+        
+        try:
+            # Convert product data to HS matching requests
+            match_requests = []
+            for product in products_data:
+                match_request = HSCodeMatchRequest(
+                    product_description=product.get('product_description', ''),
+                    country=country_schema,
+                    include_alternatives=True,
+                    confidence_threshold=0.5  # Lower threshold for initial matching
+                )
+                match_requests.append(match_request)
+            
+            logger.info(f"Processing {len(match_requests)} products for HS code matching")
+            
+            # Batch process HS code matching
+            try:
+                matching_results = await hs_matching_service.match_batch_products(
+                    requests=match_requests,
+                    max_concurrent=5  # Conservative concurrency for file processing
+                )
+            except Exception as e:
+                error_messages.append(f"HS code matching service failed: {str(e)}")
+                # Update job status to failed
+                processing_job.status = ProcessingStatus.FAILED
+                processing_job.error_details = f"HS code matching failed: {str(e)}"
+                self.db.commit()
+                return created_matches, error_messages
+            
+            # Create ProductMatch records for each successful result
+            for i, (product_data, match_result) in enumerate(zip(products_data, matching_results)):
+                try:
+                    # Extract numeric values with proper conversion
+                    quantity = Decimal(str(product_data.get('quantity', 0)).replace(',', ''))
+                    value = Decimal(str(product_data.get('value', 0)).replace(',', ''))
+                    
+                    # Determine if manual review is required
+                    requires_review = hs_matching_service.should_require_manual_review(
+                        match_result.primary_match.confidence
+                    )
+                    
+                    # Extract alternative HS codes
+                    alternatives = []
+                    if match_result.alternative_matches:
+                        alternatives = [alt.hs_code for alt in match_result.alternative_matches]
+                    
+                    # Create ProductMatch record
+                    product_match = ProductMatch(
+                        job_id=processing_job.id,
+                        product_description=product_data.get('product_description', ''),
+                        quantity=quantity,
+                        unit_of_measure=product_data.get('unit', ''),
+                        value=value,
+                        origin_country=product_data.get('origin_country', '')[:3].upper(),  # Ensure 3-char country code
+                        matched_hs_code=match_result.primary_match.hs_code,
+                        confidence_score=Decimal(str(match_result.primary_match.confidence)),
+                        alternative_hs_codes=alternatives if alternatives else None,
+                        vector_store_reasoning=match_result.primary_match.reasoning,
+                        requires_manual_review=requires_review,
+                        user_confirmed=False
+                    )
+                    
+                    self.db.add(product_match)
+                    created_matches.append(product_match)
+                    
+                except Exception as e:
+                    error_msg = f"Failed to create ProductMatch for row {i+1}: {str(e)}"
+                    logger.error(error_msg)
+                    error_messages.append(error_msg)
+                    continue
+            
+            # Commit all ProductMatch records
+            try:
+                self.db.commit()
+                
+                # Update job status to completed if no errors
+                if not error_messages:
+                    processing_job.status = ProcessingStatus.COMPLETED
+                    processing_job.total_products = len(created_matches)
+                else:
+                    processing_job.status = ProcessingStatus.COMPLETED_WITH_ERRORS
+                    processing_job.error_details = "; ".join(error_messages[:5])  # Limit error details
+                
+                self.db.commit()
+                
+                logger.info(f"Created {len(created_matches)} ProductMatch records with {len(error_messages)} errors")
+                
+            except Exception as e:
+                self.db.rollback()
+                error_msg = f"Failed to save ProductMatch records: {str(e)}"
+                logger.error(error_msg)
+                error_messages.append(error_msg)
+                
+                # Update job status to failed
+                processing_job.status = ProcessingStatus.FAILED
+                processing_job.error_details = error_msg
+                self.db.commit()
+            
+            return created_matches, error_messages
+            
+        except Exception as e:
+            logger.error(f"Product processing failed: {str(e)}")
+            error_messages.append(f"Product processing failed: {str(e)}")
+            
+            # Update job status to failed
+            processing_job.status = ProcessingStatus.FAILED
+            processing_job.error_details = str(e)
+            self.db.commit()
+            
+            return created_matches, error_messages
+
+    async def process_file_with_hs_matching(
+        self,
+        file: UploadFile,
+        user: User,
+        country_schema: str = "default"
+    ) -> Dict[str, Any]:
+        """
+        Complete file processing workflow with HS code matching
+        
+        Args:
+            file: Uploaded file to process
+            user: User who uploaded the file
+            country_schema: Country schema for HS code matching
+            
+        Returns:
+            Dictionary with processing results and statistics
+        """
+        start_time = time.time()
+        
+        try:
+            # Step 1: Validate file upload
+            validation_result = await self.validate_file_upload(file)
+            if not validation_result.is_valid:
+                return {
+                    "success": False,
+                    "error": "File validation failed",
+                    "validation_result": validation_result
+                }
+            
+            # Step 2: Check user credits
+            estimated_credits = self.calculate_processing_credits(validation_result.total_rows)
+            credit_check = self.check_user_credits(user, estimated_credits)
+            
+            if not credit_check['has_sufficient_credits']:
+                return {
+                    "success": False,
+                    "error": "Insufficient credits",
+                    "credit_check": credit_check
+                }
+            
+            # Step 3: Reserve credits
+            credits_reserved = self.reserve_user_credits(user, estimated_credits)
+            if not credits_reserved:
+                return {
+                    "success": False,
+                    "error": "Failed to reserve credits - insufficient balance"
+                }
+            
+            # Step 4: Upload file to S3
+            try:
+                file_url = await self.upload_file_to_s3(file, str(user.id))
+            except Exception as e:
+                # Refund credits if S3 upload fails
+                self.refund_user_credits(user, estimated_credits)
+                return {
+                    "success": False,
+                    "error": f"File upload failed: {str(e)}"
+                }
+            
+            # Step 5: Create processing job
+            processing_job = self.create_processing_job(
+                user=user,
+                file_name=file.filename,
+                file_url=file_url,
+                file_size=file.size,
+                country_schema=country_schema,
+                credits_used=estimated_credits,
+                total_products=validation_result.total_rows
+            )
+            
+            # Step 6: Extract product data from file
+            try:
+                await file.seek(0)  # Reset file pointer
+                content = await file.read()
+                
+                # Parse products based on file type
+                file_ext = Path(file.filename).suffix.lower()
+                if file_ext == '.csv':
+                    products_data = await self._extract_csv_products(content)
+                elif file_ext == '.xlsx':
+                    products_data = await self._extract_xlsx_products(content)
+                else:
+                    raise ValueError(f"Unsupported file type: {file_ext}")
+                    
+            except Exception as e:
+                # Refund credits if parsing fails
+                self.refund_user_credits(user, estimated_credits)
+                processing_job.status = ProcessingStatus.FAILED
+                processing_job.error_details = f"File parsing failed: {str(e)}"
+                self.db.commit()
+                
+                return {
+                    "success": False,
+                    "error": f"File parsing failed: {str(e)}",
+                    "job_id": str(processing_job.id)
+                }
+            
+            # Step 7: Process products with HS code matching
+            try:
+                product_matches, processing_errors = await self.process_products_with_hs_matching(
+                    processing_job=processing_job,
+                    products_data=products_data,
+                    country_schema=country_schema
+                )
+                
+                # Calculate final processing time
+                total_processing_time = (time.time() - start_time) * 1000
+                
+                # Prepare success response
+                result = {
+                    "success": True,
+                    "job_id": str(processing_job.id),
+                    "products_processed": len(product_matches),
+                    "processing_errors": processing_errors,
+                    "credits_used": estimated_credits,
+                    "processing_time_ms": round(total_processing_time, 2),
+                    "validation_result": validation_result,
+                    "hs_matching_summary": {
+                        "total_matches": len(product_matches),
+                        "high_confidence": len([m for m in product_matches if m.confidence_score >= 0.95]),
+                        "medium_confidence": len([m for m in product_matches if 0.8 <= m.confidence_score < 0.95]),
+                        "low_confidence": len([m for m in product_matches if m.confidence_score < 0.8]),
+                        "requires_review": len([m for m in product_matches if m.requires_manual_review])
+                    }
+                }
+                
+                return result
+                
+            except Exception as e:
+                # If HS matching fails, refund credits and update job
+                self.refund_user_credits(user, estimated_credits)
+                processing_job.status = ProcessingStatus.FAILED
+                processing_job.error_details = f"HS code matching failed: {str(e)}"
+                self.db.commit()
+                
+                return {
+                    "success": False,
+                    "error": f"HS code matching failed: {str(e)}",
+                    "job_id": str(processing_job.id)
+                }
+                
+        except Exception as e:
+            logger.error(f"Complete file processing failed: {str(e)}")
+            return {
+                "success": False,
+                "error": f"File processing failed: {str(e)}"
+            }
+
+    async def _extract_csv_products(self, content: bytes) -> List[Dict[str, Any]]:
+        """Extract product data from CSV content"""
+        products = []
+        
+        # Decode content with encoding detection
+        text_content = None
+        encodings_to_try = ['utf-8', 'utf-8-sig', 'latin1', 'iso-8859-1', 'cp1252', 'windows-1252']
+        
+        for encoding in encodings_to_try:
+            try:
+                text_content = content.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        
+        if text_content is None:
+            raise ValueError("Unable to decode CSV file")
+        
+        # Parse CSV
+        csv_file = io.StringIO(text_content)
+        reader = csv.DictReader(csv_file)
+        
+        for row in reader:
+            # Normalize keys
+            normalized_row = {k.lower().replace(' ', '_').strip(): v for k, v in row.items()}
+            
+            # Convert to standard format
+            product = {
+                'product_description': normalized_row.get('product_description', '').strip(),
+                'quantity': float(str(normalized_row.get('quantity', 0)).replace(',', '')),
+                'unit': normalized_row.get('unit', '').strip(),
+                'value': float(str(normalized_row.get('value', 0)).replace(',', '')),
+                'origin_country': normalized_row.get('origin_country', '').strip(),
+                'unit_price': float(str(normalized_row.get('unit_price', 0)).replace(',', ''))
+            }
+            
+            # Only add valid products (with description)
+            if product['product_description']:
+                products.append(product)
+        
+        return products
+
+    async def _extract_xlsx_products(self, content: bytes) -> List[Dict[str, Any]]:
+        """Extract product data from XLSX content"""
+        products = []
+        
+        # Read XLSX file
+        df = pd.read_excel(io.BytesIO(content))
+        
+        for _, row in df.iterrows():
+            # Normalize keys
+            normalized_row = {str(k).lower().replace(' ', '_').strip(): v for k, v in row.to_dict().items()}
+            
+            # Convert to standard format
+            product = {
+                'product_description': str(normalized_row.get('product_description', '')).strip(),
+                'quantity': float(str(normalized_row.get('quantity', 0)).replace(',', '')),
+                'unit': str(normalized_row.get('unit', '')).strip(),
+                'value': float(str(normalized_row.get('value', 0)).replace(',', '')),
+                'origin_country': str(normalized_row.get('origin_country', '')).strip(),
+                'unit_price': float(str(normalized_row.get('unit_price', 0)).replace(',', ''))
+            }
+            
+            # Only add valid products (with description)
+            if product['product_description'] and product['product_description'] != 'nan':
+                products.append(product)
+        
+        return products

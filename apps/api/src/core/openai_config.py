@@ -51,9 +51,11 @@ Your role is to:
 
 Always prioritize accuracy over speed, and provide detailed reasoning for your classification decisions."""
 
-    # FileSearchTool Configuration  
-    MAX_SEARCH_RESULTS = 3
+    # FileSearchTool Configuration - Optimized for performance
+    MAX_SEARCH_RESULTS = 5  # Increased for better matching but still fast
     SEARCH_CONFIDENCE_THRESHOLD = 0.7
+    CHUNK_SIZE = 800  # Optimized chunk size for faster retrieval
+    CHUNK_OVERLAP = 200  # Overlap for context preservation
     
     @classmethod
     def create_agent(cls, country: str = "default") -> Agent:
@@ -68,10 +70,11 @@ Always prioritize accuracy over speed, and provide detailed reasoning for your c
             vector_store_config["default"]
         )
         
-        # Configure FileSearchTool
+        # Configure FileSearchTool with performance optimizations
         file_search_tool = FileSearchTool(
             max_num_results=cls.MAX_SEARCH_RESULTS,
             vector_store_ids=vector_store_ids,
+            # Note: Additional chunking parameters would be set at vector store level
         )
         
         # Create and return configured agent

@@ -150,6 +150,11 @@ async def upload_file(
     except HTTPException:
         raise
     except Exception as e:
+        # Log the error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"File upload error: {str(e)}", exc_info=True)
+        
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error during file upload: {str(e)}"
@@ -290,4 +295,85 @@ async def update_job_data(
         raise HTTPException(
             status_code=500,
             detail=f"Error updating job data: {str(e)}"
+        )
+
+
+@router.post("/process-with-hs-matching", response_model=dict)
+@limiter.limit(UPLOAD_RATE_LIMITS["per_minute"])
+@limiter.limit(UPLOAD_RATE_LIMITS["per_hour"]) 
+@limiter.limit(UPLOAD_RATE_LIMITS["per_day"])
+async def process_file_with_hs_matching(
+    request: Request,
+    file: UploadFile = File(..., description="CSV or XLSX file to process"),
+    country_schema: str = Form(default="default", description="Country schema for HS code matching"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Complete file processing workflow with HS code matching
+    
+    - **file**: CSV (UTF-8) or XLSX file with required columns
+    - **country_schema**: Country schema for HS code matching (default: default)
+    
+    Required columns: Product Description, Quantity, Unit, Value, Origin Country, Unit Price
+    
+    This endpoint performs the complete workflow:
+    1. File validation
+    2. Credit verification and reservation
+    3. File upload to S3
+    4. Product extraction
+    5. HS code matching using OpenAI Vector Store
+    6. ProductMatch record creation
+    """
+    try:
+        # Initialize file processing service
+        file_service = FileProcessingService(db)
+        
+        # Execute complete processing workflow with HS matching
+        result = await file_service.process_file_with_hs_matching(
+            file=file,
+            user=current_user,
+            country_schema=country_schema
+        )
+        
+        # Return result based on success/failure
+        if result.get("success"):
+            return {
+                "success": True,
+                "job_id": result["job_id"],
+                "products_processed": result["products_processed"],
+                "processing_errors": result["processing_errors"],
+                "credits_used": result["credits_used"],
+                "processing_time_ms": result["processing_time_ms"],
+                "hs_matching_summary": result["hs_matching_summary"],
+                "validation_summary": {
+                    "total_rows": result["validation_result"].total_rows,
+                    "valid_rows": result["validation_result"].valid_rows,
+                    "warnings": result["validation_result"].warnings
+                }
+            }
+        else:
+            # Processing failed
+            status_code = 422 if "validation" in result.get("error", "") else 500
+            raise HTTPException(
+                status_code=status_code,
+                detail={
+                    "error": result.get("error"),
+                    "job_id": result.get("job_id"),
+                    "validation_result": result.get("validation_result"),
+                    "credit_check": result.get("credit_check")
+                }
+            )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log the error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"File processing with HS matching error: {str(e)}", exc_info=True)
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error during file processing: {str(e)}"
         )

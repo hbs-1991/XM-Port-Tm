@@ -58,3 +58,6 @@ mimetype
 
 # Botocore
 botocore
+
+# Chardet
+chardet

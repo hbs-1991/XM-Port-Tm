@@ -9,8 +9,11 @@ import asyncio
 import time
 import logging
 import hashlib
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from decimal import Decimal
+from functools import lru_cache
+from collections import deque
+from datetime import datetime, timedelta
 
 from agents import Runner
 from pydantic import BaseModel, Field
@@ -45,8 +48,13 @@ class HSCodeMatchingService:
     # Configuration constants
     MAX_RETRY_ATTEMPTS = 3
     RETRY_DELAY_SECONDS = 1.0
-    BATCH_SIZE_LIMIT = 50
-    TIMEOUT_SECONDS = 30
+    BATCH_SIZE_LIMIT = 100  # Increased from 50
+    TIMEOUT_SECONDS = 20  # Reduced from 30 for faster failures
+    
+    # Performance optimization settings
+    MAX_CONCURRENT_REQUESTS = 10  # Connection pool size
+    REQUEST_QUEUE_SIZE = 200  # Max queued requests
+    PERFORMANCE_TARGET_MS = 2000  # 2 second target
     
     # Confidence thresholds
     HIGH_CONFIDENCE_THRESHOLD = 0.95
@@ -54,21 +62,51 @@ class HSCodeMatchingService:
     LOW_CONFIDENCE_THRESHOLD = 0.5
     
     def __init__(self):
-        """Initialize the HS Code Matching Service"""
+        """Initialize the HS Code Matching Service with performance optimizations"""
         self.agent_config = OpenAIAgentConfig()
         self._agents_cache: Dict[str, Any] = {}
         self._cache_service = None
-        logger.info("HSCodeMatchingService initialized")
+        
+        # Performance optimization: Connection pooling and request queuing
+        self._request_semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_REQUESTS)
+        self._request_queue = deque(maxlen=self.REQUEST_QUEUE_SIZE)
+        self._performance_metrics = {
+            "total_requests": 0,
+            "cache_hits": 0,
+            "avg_response_time_ms": 0,
+            "requests_under_target": 0
+        }
+        
+        # Async initialization tracking
+        self._initialized = False
+        self._initialization_lock = asyncio.Lock()
+        
+        logger.info("HSCodeMatchingService initialized with performance optimizations")
     
     async def _get_cache_service(self):
-        """Get cache service with lazy initialization"""
+        """Get cache service with lazy initialization and connection pooling"""
         if self._cache_service is None:
-            try:
-                self._cache_service = await get_cache_service()
-            except Exception as e:
-                logger.warning(f"Cache service unavailable, using fallback: {str(e)}")
-                self._cache_service = noop_cache_service
+            async with self._initialization_lock:
+                if self._cache_service is None:  # Double-check pattern
+                    try:
+                        self._cache_service = await get_cache_service()
+                        # Pre-warm cache on first initialization
+                        if not self._initialized:
+                            asyncio.create_task(self._background_cache_warming())
+                            self._initialized = True
+                    except Exception as e:
+                        logger.warning(f"Cache service unavailable, using fallback: {str(e)}")
+                        self._cache_service = noop_cache_service
         return self._cache_service
+    
+    async def _background_cache_warming(self):
+        """Background task to warm cache with common products"""
+        try:
+            await asyncio.sleep(2)  # Wait for service to fully initialize
+            result = await self.warm_cache()
+            logger.info(f"Background cache warming completed: {result}")
+        except Exception as e:
+            logger.warning(f"Background cache warming failed: {str(e)}")
     
     def _get_or_create_agent(self, country: str = "default"):
         """Get or create an agent for the specified country with caching"""
@@ -201,7 +239,7 @@ class HSCodeMatchingService:
     async def match_batch_products(
         self,
         requests: List[HSCodeMatchRequest],
-        max_concurrent: int = 5
+        max_concurrent: int = None
     ) -> List[HSCodeMatchResult]:
         """
         Match multiple products to HS codes concurrently with batch caching
@@ -219,7 +257,11 @@ class HSCodeMatchingService:
         if len(requests) > self.BATCH_SIZE_LIMIT:
             raise ValueError(f"Batch size {len(requests)} exceeds limit of {self.BATCH_SIZE_LIMIT}")
         
-        logger.info(f"Starting batch matching for {len(requests)} products")
+        # Optimize concurrency based on batch size
+        if max_concurrent is None:
+            max_concurrent = min(self.MAX_CONCURRENT_REQUESTS, max(5, len(requests) // 10))
+        
+        logger.info(f"Starting batch matching for {len(requests)} products with {max_concurrent} concurrent workers")
         
         # Get cache service
         cache_service = await self._get_cache_service()
@@ -231,6 +273,7 @@ class HSCodeMatchingService:
         cached_batch = await cache_service.get_cached_batch_match(batch_hash)
         if cached_batch and len(cached_batch) == len(requests):
             logger.info(f"Batch cache hit for {len(requests)} products")
+            self._update_performance_metrics(0, len(requests), True)
             return cached_batch
         
         # Batch cache miss - process individual requests with caching
@@ -257,6 +300,7 @@ class HSCodeMatchingService:
             
             # Process results and handle exceptions
             processed_results = []
+            total_time = 0
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     logger.error(f"Failed to match product at index {i}: {str(result)}")
@@ -268,6 +312,11 @@ class HSCodeMatchingService:
                     processed_results.append(error_result)
                 else:
                     processed_results.append(result)
+                    total_time += result.processing_time_ms
+            
+            # Update performance metrics
+            avg_time = total_time / len(processed_results) if processed_results else 0
+            self._update_performance_metrics(avg_time, len(processed_results), False)
             
             # Cache the batch results if all successful
             successful_results = [r for r in processed_results if r.primary_match.hs_code != "ERROR"]
@@ -276,7 +325,7 @@ class HSCodeMatchingService:
                 if cache_success:
                     logger.debug(f"Cached batch results for {len(processed_results)} products")
             
-            logger.info(f"Completed batch matching: {len(processed_results)} results")
+            logger.info(f"Completed batch matching: {len(processed_results)} results, avg time: {avg_time:.0f}ms")
             return processed_results
             
         except Exception as e:
@@ -284,33 +333,43 @@ class HSCodeMatchingService:
             raise
     
     async def _execute_with_retry(self, agent, query: str) -> HSCodeResult:
-        """Execute agent query with retry logic and timeout"""
+        """Execute agent query with retry logic, timeout, and connection pooling"""
         last_exception = None
         
-        for attempt in range(self.MAX_RETRY_ATTEMPTS):
-            try:
-                # Execute with timeout
-                result = await asyncio.wait_for(
-                    Runner.run(agent, query),
-                    timeout=self.TIMEOUT_SECONDS
-                )
-                
-                if result and hasattr(result, 'final_output'):
-                    return result.final_output
-                else:
-                    raise ValueError("Invalid response format from OpenAI Agent")
+        # Use request semaphore for connection pooling
+        async with self._request_semaphore:
+            for attempt in range(self.MAX_RETRY_ATTEMPTS):
+                try:
+                    # Add to request queue for monitoring
+                    request_id = f"{time.time()}_{hash(query)}"
+                    self._request_queue.append((request_id, time.time()))
                     
-            except asyncio.TimeoutError as e:
-                last_exception = e
-                logger.warning(f"Timeout on attempt {attempt + 1}/{self.MAX_RETRY_ATTEMPTS}")
-                if attempt < self.MAX_RETRY_ATTEMPTS - 1:
-                    await asyncio.sleep(self.RETRY_DELAY_SECONDS * (attempt + 1))
+                    # Execute with reduced timeout for faster failures
+                    result = await asyncio.wait_for(
+                        Runner.run(agent, query),
+                        timeout=self.TIMEOUT_SECONDS
+                    )
                     
-            except Exception as e:
-                last_exception = e
-                logger.warning(f"Error on attempt {attempt + 1}/{self.MAX_RETRY_ATTEMPTS}: {str(e)}")
-                if attempt < self.MAX_RETRY_ATTEMPTS - 1:
-                    await asyncio.sleep(self.RETRY_DELAY_SECONDS * (attempt + 1))
+                    if result and hasattr(result, 'final_output'):
+                        return result.final_output
+                    else:
+                        raise ValueError("Invalid response format from OpenAI Agent")
+                        
+                except asyncio.TimeoutError as e:
+                    last_exception = e
+                    logger.warning(f"Timeout on attempt {attempt + 1}/{self.MAX_RETRY_ATTEMPTS} (queue size: {len(self._request_queue)})")
+                    if attempt < self.MAX_RETRY_ATTEMPTS - 1:
+                        # Exponential backoff with jitter
+                        backoff = self.RETRY_DELAY_SECONDS * (2 ** attempt) + (hash(query) % 1000) / 1000
+                        await asyncio.sleep(min(backoff, 5.0))  # Cap at 5 seconds
+                        
+                except Exception as e:
+                    last_exception = e
+                    logger.warning(f"Error on attempt {attempt + 1}/{self.MAX_RETRY_ATTEMPTS}: {str(e)}")
+                    if attempt < self.MAX_RETRY_ATTEMPTS - 1:
+                        # Exponential backoff with jitter
+                        backoff = self.RETRY_DELAY_SECONDS * (2 ** attempt) + (hash(query) % 1000) / 1000
+                        await asyncio.sleep(min(backoff, 5.0))
         
         # All retries failed
         if isinstance(last_exception, asyncio.TimeoutError):
@@ -465,7 +524,7 @@ class HSCodeMatchingService:
         return await cache_service.get_cache_statistics()
     
     async def get_service_health(self) -> Dict[str, Any]:
-        """Get service health status and configuration including cache status"""
+        """Get service health status and configuration including cache status and performance metrics"""
         try:
             # Get cache service and statistics
             cache_service = await self._get_cache_service()
@@ -483,19 +542,27 @@ class HSCodeMatchingService:
             
             response_time = (time.time() - start_time) * 1000
             
+            # Calculate performance metrics
+            performance_metrics = self._calculate_performance_summary()
+            
             return {
                 "status": "healthy",
                 "openai_response_time_ms": round(response_time, 2),
                 "available_countries": self.agent_config.get_available_countries(),
                 "agent_cache_size": len(self._agents_cache),
+                "request_queue_size": len(self._request_queue),
+                "active_connections": self.MAX_CONCURRENT_REQUESTS - self._request_semaphore._value,
                 "cache_service": {
                     "available": cache_available,
                     "statistics": cache_stats
                 },
+                "performance": performance_metrics,
                 "configuration": {
                     "max_retry_attempts": self.MAX_RETRY_ATTEMPTS,
                     "timeout_seconds": self.TIMEOUT_SECONDS,
                     "batch_size_limit": self.BATCH_SIZE_LIMIT,
+                    "max_concurrent_requests": self.MAX_CONCURRENT_REQUESTS,
+                    "performance_target_ms": self.PERFORMANCE_TARGET_MS,
                     "confidence_thresholds": {
                         "high": self.HIGH_CONFIDENCE_THRESHOLD,
                         "medium": self.MEDIUM_CONFIDENCE_THRESHOLD,
@@ -519,6 +586,79 @@ class HSCodeMatchingService:
                     "statistics": await cache_service.get_cache_statistics() if cache_available else {"error": "Cache unavailable"}
                 }
             }
+
+
+    def _update_performance_metrics(self, response_time_ms: float, batch_size: int, from_cache: bool):
+        """Update internal performance metrics"""
+        self._performance_metrics["total_requests"] += batch_size
+        
+        if from_cache:
+            self._performance_metrics["cache_hits"] += batch_size
+            # Cache hits are always under target
+            self._performance_metrics["requests_under_target"] += batch_size
+        else:
+            # Update average response time (exponential moving average)
+            alpha = 0.1  # Smoothing factor
+            if self._performance_metrics["avg_response_time_ms"] == 0:
+                self._performance_metrics["avg_response_time_ms"] = response_time_ms
+            else:
+                self._performance_metrics["avg_response_time_ms"] = (
+                    alpha * response_time_ms + 
+                    (1 - alpha) * self._performance_metrics["avg_response_time_ms"]
+                )
+            
+            # Track requests meeting performance target
+            if response_time_ms <= self.PERFORMANCE_TARGET_MS:
+                self._performance_metrics["requests_under_target"] += batch_size
+    
+    def _calculate_performance_summary(self) -> Dict[str, Any]:
+        """Calculate performance summary metrics"""
+        total = self._performance_metrics["total_requests"]
+        if total == 0:
+            return {
+                "total_requests": 0,
+                "cache_hit_rate": 0.0,
+                "avg_response_time_ms": 0,
+                "target_achievement_rate": 0.0
+            }
+        
+        return {
+            "total_requests": total,
+            "cache_hit_rate": round(self._performance_metrics["cache_hits"] / total * 100, 2),
+            "avg_response_time_ms": round(self._performance_metrics["avg_response_time_ms"], 0),
+            "target_achievement_rate": round(
+                self._performance_metrics["requests_under_target"] / total * 100, 2
+            ),
+            "performance_target_ms": self.PERFORMANCE_TARGET_MS
+        }
+    
+    @lru_cache(maxsize=1000)
+    def _build_search_query_cached(self, description: str, include_alternatives: bool) -> str:
+        """Cached version of query building for frequently requested products"""
+        return self._build_search_query(description, include_alternatives)
+    
+    async def optimize_for_performance(self) -> Dict[str, Any]:
+        """Run performance optimization tasks"""
+        results = {}
+        
+        # 1. Warm cache with common products
+        logger.info("Starting performance optimization tasks...")
+        results["cache_warming"] = await self.warm_cache()
+        
+        # 2. Pre-create agents for known countries
+        for country in self.agent_config.get_available_countries():
+            self._get_or_create_agent(country)
+        results["agents_preloaded"] = len(self._agents_cache)
+        
+        # 3. Clear old request queue entries
+        current_time = time.time()
+        old_requests = []
+        while self._request_queue and (current_time - self._request_queue[0][1]) > 300:
+            old_requests.append(self._request_queue.popleft())
+        results["queue_cleaned"] = len(old_requests)
+        
+        logger.info(f"Performance optimization completed: {results}")
+        return results
 
 
 # Create singleton instance

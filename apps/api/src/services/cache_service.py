@@ -24,17 +24,18 @@ logger = logging.getLogger(__name__)
 class CacheService:
     """Redis-based caching service for HS code matching results"""
     
-    # Cache configuration
-    DEFAULT_TTL_HOURS = 24  # 24 hours default TTL
-    FREQUENT_MATCH_TTL_HOURS = 168  # 7 days for frequently accessed matches
-    BATCH_CACHE_TTL_HOURS = 12  # 12 hours for batch results
+    # Cache configuration - Optimized for performance
+    DEFAULT_TTL_HOURS = 48  # Increased to 48 hours for better cache hit rate
+    FREQUENT_MATCH_TTL_HOURS = 336  # 14 days for frequently accessed matches
+    BATCH_CACHE_TTL_HOURS = 24  # 24 hours for batch results
+    HOT_CACHE_TTL_HOURS = 720  # 30 days for very high confidence matches
     
     # Cache keys
     CACHE_KEY_PREFIX = "xm_port:hs_match"
     STATS_KEY_PREFIX = "xm_port:hs_stats"
     WARMING_KEY_PREFIX = "xm_port:hs_warming"
     
-    # Warming strategies
+    # Warming strategies - Extended for better coverage
     COMMON_PRODUCTS = [
         "wheat flour",
         "cotton fabric",
@@ -45,7 +46,17 @@ class CacheService:
         "machinery",
         "chemicals",
         "food products",
-        "electronics"
+        "electronics",
+        "plastic products",
+        "rubber products",
+        "metal products",
+        "paper products",
+        "glass products",
+        "ceramic products",
+        "leather goods",
+        "wood products",
+        "pharmaceutical products",
+        "cosmetic products"
     ]
     
     def __init__(self):
@@ -56,15 +67,21 @@ class CacheService:
     async def initialize(self) -> bool:
         """Initialize Redis connection with fallback handling"""
         try:
-            # Create connection pool
+            # Create connection pool with optimized settings
             self._connection_pool = redis.ConnectionPool.from_url(
                 settings.REDIS_URL,
                 encoding="utf-8",
                 decode_responses=True,
-                max_connections=20,
+                max_connections=50,  # Increased for high concurrency
                 retry_on_timeout=True,
-                socket_connect_timeout=5,
-                socket_timeout=5
+                socket_connect_timeout=2,  # Reduced for faster failure detection
+                socket_timeout=3,  # Reduced for faster timeouts
+                socket_keepalive=True,  # Keep connections alive
+                socket_keepalive_options={
+                    1: 1,  # TCP_KEEPIDLE
+                    2: 1,  # TCP_KEEPINTVL
+                    3: 3,  # TCP_KEEPCNT
+                }
             )
             
             # Create Redis client
