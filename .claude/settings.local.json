@@ -64,7 +64,9 @@
       "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest tests/unit/test_file_upload.py::TestCreditBalanceValidation::test_check_user_credits_sufficient -v)",
       "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest tests/unit/test_rate_limiting.py::TestRateLimitingMiddleware::test_upload_rate_limits_configuration -v)",
       "Bash(cp:*)",
-      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest tests/unit/test_hs_matching_service.py -v)"
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest tests/unit/test_hs_matching_service.py -v)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
