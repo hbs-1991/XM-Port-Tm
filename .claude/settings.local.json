@@ -66,7 +66,20 @@
       "Bash(cp:*)",
       "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest tests/unit/test_hs_matching_service.py -v)",
       "Bash(npm run dev:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest apps/api/tests/unit/test_cache_service.py -v)",
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python3 -m pytest apps/api/tests/unit/test_cache_service.py -v)",
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python3 -m pytest tests/unit/test_cache_service.py -v)",
+      "Bash(powershell:*)",
+      "Bash(source:*)",
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest tests/unit/test_cache_service.py -v)",
+      "Bash(PYTHONPATH=/mnt/d/PROJECTS/XM-PORT/apps/api SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" /usr/bin/python3 -m pytest tests/unit/test_cache_service.py -v -s)",
+      "Bash(/usr/bin/python3 -m pip install:*)",
+      "Bash(PYTHONPATH=/mnt/d/PROJECTS/XM-PORT/apps/api SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" /usr/bin/python3 tests/unit/test_cache_service.py)",
+      "Bash(PYTHONPATH=/mnt/d/PROJECTS/XM-PORT/apps/api /usr/bin/python3 -c \"\nimport sys\nsys.path.insert(0, ''.'')\ntry:\n    from src.services.cache_service import CacheService, cache_service\n    from src.services.hs_matching_service import hs_matching_service\n    print(''✅ Cache service imports successfully'')\n    print(''✅ HS matching service imports successfully'')\n    print(''✅ Cache integration completed'')\nexcept Exception as e:\n    print(f''❌ Import error: {e}'')\n\")",
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest apps/api/tests/unit/test_hs_matching_api.py -v)",
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest apps/api/tests/unit/test_analytics_service.py -v)",
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python3 -m pytest apps/api/tests/unit/test_analytics_service.py::TestHSCodeAnalyticsService::test_record_matching_operation_success -v)"
     ],
     "deny": [],
     "ask": []

@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from src.services.hs_matching_service import HSCodeMatchingService, HSCodeMatchRequest, HSCodeBatchMatchRequest
 from src.core.openai_config import HSCodeResult, HSCodeMatchResult
+from src.services.cache_service import CacheService
 
 
 @pytest.fixture
@@ -401,3 +402,247 @@ class TestAsyncBehavior:
         assert end_time - start_time >= 0.3  # Allow some tolerance
         assert len(results) == 10
         assert mock_runner.call_count == 10
+
+
+@pytest.mark.asyncio
+class TestCacheIntegration:
+    """Test cache integration with HS matching service."""
+    
+    @pytest.fixture
+    async def mock_cache_service(self):
+        """Mock cache service for testing."""
+        cache_service = AsyncMock()
+        cache_service.is_available.return_value = True
+        cache_service.get_cached_match.return_value = None  # Default to cache miss
+        cache_service.cache_match_result.return_value = True
+        cache_service.get_cached_batch_match.return_value = None
+        cache_service.cache_batch_results.return_value = True
+        return cache_service
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    @patch('src.services.hs_matching_service.Runner.run')
+    async def test_cache_hit_single_product(self, mock_runner, mock_get_cache_service, hs_service, mock_hs_code_result):
+        """Test cache hit for single product matching."""
+        # Setup cache service mock
+        mock_cache_service = AsyncMock()
+        cached_result = HSCodeMatchResult(
+            primary_match=mock_hs_code_result,
+            alternative_matches=[],
+            processing_time_ms=0.0,
+            query="laptop computer"
+        )
+        mock_cache_service.get_cached_match.return_value = cached_result
+        mock_get_cache_service.return_value = mock_cache_service
+        
+        result = await hs_service.match_single_product("laptop computer")
+        
+        # Should return cached result without calling OpenAI
+        assert result == cached_result
+        assert mock_runner.call_count == 0  # OpenAI not called
+        mock_cache_service.get_cached_match.assert_called_once()
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    @patch('src.services.hs_matching_service.Runner.run')
+    async def test_cache_miss_and_cache_result(self, mock_runner, mock_get_cache_service, hs_service, mock_openai_runner_result):
+        """Test cache miss scenario with subsequent caching."""
+        # Setup cache service mock
+        mock_cache_service = AsyncMock()
+        mock_cache_service.get_cached_match.return_value = None  # Cache miss
+        mock_cache_service.cache_match_result.return_value = True
+        mock_get_cache_service.return_value = mock_cache_service
+        
+        # Setup OpenAI mock
+        mock_runner.return_value = mock_openai_runner_result
+        
+        result = await hs_service.match_single_product("laptop computer")
+        
+        # Should call OpenAI and cache result
+        assert mock_runner.call_count == 1
+        mock_cache_service.get_cached_match.assert_called_once()
+        mock_cache_service.cache_match_result.assert_called_once()
+        
+        # Verify cache call arguments
+        cache_args = mock_cache_service.cache_match_result.call_args
+        assert cache_args[1]['product_description'] == "laptop computer"
+        assert cache_args[1]['country'] == "default"
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    async def test_batch_cache_hit(self, mock_get_cache_service, hs_service, mock_hs_code_result):
+        """Test batch cache hit scenario."""
+        # Setup cache service mock
+        mock_cache_service = AsyncMock()
+        cached_results = [
+            HSCodeMatchResult(
+                primary_match=mock_hs_code_result,
+                alternative_matches=[],
+                processing_time_ms=0.0,
+                query=f"product {i}"
+            ) for i in range(3)
+        ]
+        mock_cache_service.get_cached_batch_match.return_value = cached_results
+        mock_get_cache_service.return_value = mock_cache_service
+        
+        requests = [HSCodeMatchRequest(product_description=f"product {i}") for i in range(3)]
+        results = await hs_service.match_batch_products(requests)
+        
+        # Should return cached results
+        assert len(results) == 3
+        assert results == cached_results
+        mock_cache_service.get_cached_batch_match.assert_called_once()
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    @patch('src.services.hs_matching_service.Runner.run')
+    async def test_batch_cache_miss_and_cache(self, mock_runner, mock_get_cache_service, hs_service, mock_openai_runner_result):
+        """Test batch cache miss with subsequent individual caching."""
+        # Setup cache service mock
+        mock_cache_service = AsyncMock()
+        mock_cache_service.get_cached_batch_match.return_value = None  # Batch cache miss
+        mock_cache_service.get_cached_match.return_value = None  # Individual cache miss
+        mock_cache_service.cache_match_result.return_value = True
+        mock_cache_service.cache_batch_results.return_value = True
+        mock_get_cache_service.return_value = mock_cache_service
+        
+        # Setup OpenAI mock
+        mock_runner.return_value = mock_openai_runner_result
+        
+        requests = [HSCodeMatchRequest(product_description=f"product {i}") for i in range(2)]
+        results = await hs_service.match_batch_products(requests)
+        
+        # Should call OpenAI for each product and cache results
+        assert len(results) == 2
+        assert mock_runner.call_count == 2
+        mock_cache_service.get_cached_batch_match.assert_called_once()
+        mock_cache_service.cache_batch_results.assert_called_once()
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    async def test_cache_service_unavailable_fallback(self, mock_get_cache_service, hs_service):
+        """Test fallback behavior when cache service is unavailable."""
+        # Setup unavailable cache service
+        mock_cache_service = AsyncMock()
+        mock_cache_service.is_available.return_value = False
+        mock_get_cache_service.side_effect = Exception("Cache unavailable")
+        
+        # Should use NoOpCacheService fallback
+        cache_service = await hs_service._get_cache_service()
+        assert cache_service is not None
+        
+        # Fallback service should return appropriate defaults
+        assert await cache_service.get_cached_match("test") is None
+        assert await cache_service.cache_match_result("test", MagicMock()) is False
+    
+    async def test_batch_hash_generation(self, hs_service):
+        """Test batch hash generation for consistent caching."""
+        requests1 = [
+            HSCodeMatchRequest(product_description="laptop", country="default", confidence_threshold=0.7),
+            HSCodeMatchRequest(product_description="mouse", country="default", confidence_threshold=0.8)
+        ]
+        
+        requests2 = [
+            HSCodeMatchRequest(product_description="mouse", country="default", confidence_threshold=0.8),
+            HSCodeMatchRequest(product_description="laptop", country="default", confidence_threshold=0.7)
+        ]
+        
+        # Different order should produce same hash
+        hash1 = hs_service._generate_batch_hash(requests1)
+        hash2 = hs_service._generate_batch_hash(requests2)
+        
+        assert hash1 == hash2
+        assert len(hash1) == 16  # Should be 16 character hash
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    async def test_cache_warming(self, mock_get_cache_service, hs_service):
+        """Test cache warming functionality."""
+        mock_cache_service = AsyncMock()
+        mock_cache_service.is_available.return_value = True
+        mock_cache_service.warm_cache_with_common_products.return_value = {
+            "total_products": 10,
+            "successfully_warmed": 8,
+            "already_cached": 1,
+            "failed": 1,
+            "errors": ["Error with one product"]
+        }
+        mock_get_cache_service.return_value = mock_cache_service
+        
+        result = await hs_service.warm_cache()
+        
+        assert result["total_products"] == 10
+        assert result["successfully_warmed"] == 8
+        assert result["already_cached"] == 1
+        assert result["failed"] == 1
+        mock_cache_service.warm_cache_with_common_products.assert_called_once_with(hs_service)
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    async def test_cache_invalidation(self, mock_get_cache_service, hs_service):
+        """Test cache invalidation functionality."""
+        mock_cache_service = AsyncMock()
+        mock_cache_service.is_available.return_value = True
+        mock_cache_service.invalidate_cache_by_pattern.return_value = 25
+        mock_get_cache_service.return_value = mock_cache_service
+        
+        result = await hs_service.invalidate_cache()
+        
+        assert result["invalidated"] == 25
+        assert result["pattern"] == "xm_port:hs_match:*"
+        assert result["status"] == "success"
+        mock_cache_service.invalidate_cache_by_pattern.assert_called_once_with("xm_port:hs_match:*")
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    async def test_cache_statistics(self, mock_get_cache_service, hs_service):
+        """Test cache statistics retrieval."""
+        mock_cache_service = AsyncMock()
+        mock_stats = {
+            "redis_status": "connected",
+            "total_cache_entries": 150,
+            "cache_hits": 1200,
+            "cache_misses": 300,
+            "hit_ratio_percent": 80.0
+        }
+        mock_cache_service.get_cache_statistics.return_value = mock_stats
+        mock_get_cache_service.return_value = mock_cache_service
+        
+        result = await hs_service.get_cache_statistics()
+        
+        assert result == mock_stats
+        mock_cache_service.get_cache_statistics.assert_called_once()
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    @patch('src.services.hs_matching_service.Runner.run')
+    async def test_service_health_with_cache(self, mock_runner, mock_get_cache_service, hs_service, mock_openai_runner_result):
+        """Test service health check including cache status."""
+        # Setup cache service mock
+        mock_cache_service = AsyncMock()
+        mock_cache_service.is_available.return_value = True
+        mock_cache_service.get_cache_statistics.return_value = {
+            "redis_status": "connected",
+            "hit_ratio_percent": 75.0
+        }
+        mock_get_cache_service.return_value = mock_cache_service
+        
+        # Setup OpenAI mock
+        mock_runner.return_value = mock_openai_runner_result
+        
+        health = await hs_service.get_service_health()
+        
+        assert health["status"] == "healthy"
+        assert "openai_response_time_ms" in health
+        assert health["cache_service"]["available"] is True
+        assert health["cache_service"]["statistics"]["redis_status"] == "connected"
+        mock_cache_service.get_cache_statistics.assert_called_once()
+    
+    @patch('src.services.hs_matching_service.get_cache_service')
+    async def test_service_health_openai_failure_cache_available(self, mock_get_cache_service, hs_service):
+        """Test service health when OpenAI fails but cache is available."""
+        # Setup cache service mock
+        mock_cache_service = AsyncMock()
+        mock_cache_service.is_available.return_value = True
+        mock_cache_service.get_cache_statistics.return_value = {"redis_status": "connected"}
+        mock_get_cache_service.return_value = mock_cache_service
+        
+        # Mock OpenAI failure
+        with patch('src.services.hs_matching_service.Runner.run', side_effect=Exception("OpenAI failed")):
+            health = await hs_service.get_service_health()
+        
+        assert health["status"] == "unhealthy"
+        assert "error" in health
+        assert health["cache_service"]["available"] is True
+        assert health["cache_service"]["statistics"]["redis_status"] == "connected"

@@ -2,12 +2,13 @@
 HS Code Matching Service using OpenAI Agents SDK
 
 This service provides intelligent HS code matching for product descriptions
-using OpenAI's Vector Store and semantic search capabilities.
+using OpenAI's Vector Store and semantic search capabilities with Redis caching.
 """
 
 import asyncio
 import time
 import logging
+import hashlib
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
 
@@ -16,6 +17,8 @@ from pydantic import BaseModel, Field
 
 from ..core.openai_config import OpenAIAgentConfig, HSCodeResult, HSCodeMatchResult
 from ..schemas.processing import ProductData
+from .cache_service import get_cache_service, noop_cache_service
+from .analytics_service import analytics_service
 
 
 # Configure logging
@@ -54,7 +57,18 @@ class HSCodeMatchingService:
         """Initialize the HS Code Matching Service"""
         self.agent_config = OpenAIAgentConfig()
         self._agents_cache: Dict[str, Any] = {}
+        self._cache_service = None
         logger.info("HSCodeMatchingService initialized")
+    
+    async def _get_cache_service(self):
+        """Get cache service with lazy initialization"""
+        if self._cache_service is None:
+            try:
+                self._cache_service = await get_cache_service()
+            except Exception as e:
+                logger.warning(f"Cache service unavailable, using fallback: {str(e)}")
+                self._cache_service = noop_cache_service
+        return self._cache_service
     
     def _get_or_create_agent(self, country: str = "default"):
         """Get or create an agent for the specified country with caching"""
@@ -71,7 +85,7 @@ class HSCodeMatchingService:
         confidence_threshold: float = 0.7
     ) -> HSCodeMatchResult:
         """
-        Match a single product description to HS codes
+        Match a single product description to HS codes with caching
         
         Args:
             product_description: Description of the product to match
@@ -96,6 +110,20 @@ class HSCodeMatchingService:
         # Clean and prepare the description
         cleaned_description = self._clean_product_description(product_description)
         
+        # Get cache service
+        cache_service = await self._get_cache_service()
+        
+        # Try to get cached result first
+        cached_result = await cache_service.get_cached_match(cleaned_description, country)
+        if cached_result:
+            logger.info(f"Cache hit for product: {product_description[:50]}... "
+                       f"(Primary: {cached_result.primary_match.hs_code}, "
+                       f"Confidence: {cached_result.primary_match.confidence:.3f})")
+            return cached_result
+        
+        # Cache miss - proceed with OpenAI matching
+        logger.debug(f"Cache miss for product: {product_description[:50]}... Querying OpenAI")
+        
         # Get or create agent for country
         agent = self._get_or_create_agent(country)
         
@@ -118,15 +146,56 @@ class HSCodeMatchingService:
                 include_alternatives
             )
             
+            # Cache the result for future use
+            cache_success = await cache_service.cache_match_result(
+                product_description=cleaned_description,
+                result=processed_result,
+                country=country
+            )
+            
+            if cache_success:
+                logger.debug(f"Cached result for product: {product_description[:50]}...")
+            
             logger.info(f"Successfully matched HS code for product: {product_description[:50]}... "
                        f"(Primary: {processed_result.primary_match.hs_code}, "
                        f"Confidence: {processed_result.primary_match.confidence:.3f}, "
                        f"Time: {processing_time:.0f}ms)")
             
+            # Record analytics for successful match
+            try:
+                await analytics_service.record_matching_operation(
+                    product_description=cleaned_description,
+                    hs_code=processed_result.primary_match.hs_code,
+                    confidence_score=processed_result.primary_match.confidence,
+                    processing_time_ms=processing_time,
+                    success=True,
+                    country=country,
+                    cache_hit=cached_result is not None
+                )
+            except Exception as analytics_error:
+                logger.warning(f"Failed to record analytics: {str(analytics_error)}")
+            
             return processed_result
             
         except Exception as e:
             logger.error(f"Failed to match HS code for product: {product_description[:50]}... Error: {str(e)}")
+            
+            # Record analytics for failed match
+            try:
+                processing_time = (time.time() - start_time) * 1000
+                await analytics_service.record_matching_operation(
+                    product_description=cleaned_description,
+                    hs_code="ERROR",
+                    confidence_score=0.0,
+                    processing_time_ms=processing_time,
+                    success=False,
+                    error_message=str(e),
+                    country=country,
+                    cache_hit=False
+                )
+            except Exception as analytics_error:
+                logger.warning(f"Failed to record analytics for error case: {str(analytics_error)}")
+            
             raise
     
     async def match_batch_products(
@@ -135,7 +204,7 @@ class HSCodeMatchingService:
         max_concurrent: int = 5
     ) -> List[HSCodeMatchResult]:
         """
-        Match multiple products to HS codes concurrently
+        Match multiple products to HS codes concurrently with batch caching
         
         Args:
             requests: List of HS code match requests
@@ -151,6 +220,21 @@ class HSCodeMatchingService:
             raise ValueError(f"Batch size {len(requests)} exceeds limit of {self.BATCH_SIZE_LIMIT}")
         
         logger.info(f"Starting batch matching for {len(requests)} products")
+        
+        # Get cache service
+        cache_service = await self._get_cache_service()
+        
+        # Generate batch hash for caching
+        batch_hash = self._generate_batch_hash(requests)
+        
+        # Check for cached batch result
+        cached_batch = await cache_service.get_cached_batch_match(batch_hash)
+        if cached_batch and len(cached_batch) == len(requests):
+            logger.info(f"Batch cache hit for {len(requests)} products")
+            return cached_batch
+        
+        # Batch cache miss - process individual requests with caching
+        logger.debug(f"Batch cache miss - processing {len(requests)} individual requests")
         
         # Create semaphore to limit concurrent requests
         semaphore = asyncio.Semaphore(max_concurrent)
@@ -184,6 +268,13 @@ class HSCodeMatchingService:
                     processed_results.append(error_result)
                 else:
                     processed_results.append(result)
+            
+            # Cache the batch results if all successful
+            successful_results = [r for r in processed_results if r.primary_match.hs_code != "ERROR"]
+            if len(successful_results) == len(processed_results):
+                cache_success = await cache_service.cache_batch_results(batch_hash, processed_results)
+                if cache_success:
+                    logger.debug(f"Cached batch results for {len(processed_results)} products")
             
             logger.info(f"Completed batch matching: {len(processed_results)} results")
             return processed_results
@@ -312,10 +403,76 @@ class HSCodeMatchingService:
         """Determine if match requires manual review based on confidence"""
         return confidence < self.MEDIUM_CONFIDENCE_THRESHOLD
     
+    def _generate_batch_hash(self, requests: List[HSCodeMatchRequest]) -> str:
+        """Generate deterministic hash for batch requests for caching"""
+        # Create sorted string representation of requests for consistent hashing
+        request_strings = []
+        for req in requests:
+            req_str = f"{req.product_description}:{req.country}:{req.confidence_threshold}:{req.include_alternatives}"
+            request_strings.append(req_str)
+        
+        # Sort to ensure consistent hash regardless of order
+        request_strings.sort()
+        combined_string = "|".join(request_strings)
+        
+        # Generate hash
+        return hashlib.sha256(combined_string.encode()).hexdigest()[:16]
+    
+    async def warm_cache(self) -> Dict[str, Any]:
+        """
+        Warm cache with common product descriptions
+        
+        Returns:
+            Dictionary with warming results and statistics
+        """
+        cache_service = await self._get_cache_service()
+        
+        if not await cache_service.is_available():
+            return {"error": "Cache service not available", "warmed": 0}
+        
+        return await cache_service.warm_cache_with_common_products(self)
+    
+    async def invalidate_cache(self, pattern: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Invalidate cache entries
+        
+        Args:
+            pattern: Optional pattern to match keys, defaults to all HS code matches
+            
+        Returns:
+            Dictionary with invalidation results
+        """
+        cache_service = await self._get_cache_service()
+        
+        if not await cache_service.is_available():
+            return {"error": "Cache service not available", "invalidated": 0}
+        
+        # Default pattern for all HS code cache entries
+        if pattern is None:
+            pattern = f"xm_port:hs_match:*"
+        
+        invalidated_count = await cache_service.invalidate_cache_by_pattern(pattern)
+        
+        return {
+            "invalidated": invalidated_count,
+            "pattern": pattern,
+            "status": "success"
+        }
+    
+    async def get_cache_statistics(self) -> Dict[str, Any]:
+        """Get cache performance statistics"""
+        cache_service = await self._get_cache_service()
+        return await cache_service.get_cache_statistics()
+    
     async def get_service_health(self) -> Dict[str, Any]:
-        """Get service health status and configuration"""
+        """Get service health status and configuration including cache status"""
         try:
-            # Test connection with simple query
+            # Get cache service and statistics
+            cache_service = await self._get_cache_service()
+            cache_stats = await cache_service.get_cache_statistics()
+            cache_available = await cache_service.is_available()
+            
+            # Test OpenAI connection with simple query
             test_agent = self._get_or_create_agent("default")
             start_time = time.time()
             
@@ -328,9 +485,13 @@ class HSCodeMatchingService:
             
             return {
                 "status": "healthy",
-                "response_time_ms": round(response_time, 2),
+                "openai_response_time_ms": round(response_time, 2),
                 "available_countries": self.agent_config.get_available_countries(),
-                "cache_size": len(self._agents_cache),
+                "agent_cache_size": len(self._agents_cache),
+                "cache_service": {
+                    "available": cache_available,
+                    "statistics": cache_stats
+                },
                 "configuration": {
                     "max_retry_attempts": self.MAX_RETRY_ATTEMPTS,
                     "timeout_seconds": self.TIMEOUT_SECONDS,
@@ -344,11 +505,19 @@ class HSCodeMatchingService:
             }
             
         except Exception as e:
+            # Get cache status even if OpenAI fails
+            cache_service = await self._get_cache_service()
+            cache_available = await cache_service.is_available()
+            
             return {
                 "status": "unhealthy",
                 "error": str(e),
                 "available_countries": self.agent_config.get_available_countries(),
-                "cache_size": len(self._agents_cache)
+                "agent_cache_size": len(self._agents_cache),
+                "cache_service": {
+                    "available": cache_available,
+                    "statistics": await cache_service.get_cache_statistics() if cache_available else {"error": "Cache unavailable"}
+                }
             }
 
 
