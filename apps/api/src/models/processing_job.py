@@ -15,6 +15,7 @@ class ProcessingStatus(enum.Enum):
     PENDING = "PENDING"
     PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
+    COMPLETED_WITH_ERRORS = "COMPLETED_WITH_ERRORS"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
 
@@ -30,6 +31,9 @@ class ProcessingJob(Base):
     input_file_url = Column(Text, nullable=False)
     input_file_size = Column(BIGINT, nullable=False)
     output_xml_url = Column(Text, nullable=True)
+    xml_generation_status = Column(String(20), nullable=True)  # PENDING, GENERATING, COMPLETED, FAILED
+    xml_generated_at = Column(DateTime(timezone=True), nullable=True)
+    xml_file_size = Column(Integer, nullable=True)
     credits_used = Column(Integer, default=0, nullable=False)
     processing_time_ms = Column(Integer, nullable=True)
     total_products = Column(Integer, default=0, nullable=False)
@@ -50,6 +54,11 @@ class ProcessingJob(Base):
         CheckConstraint('average_confidence >= 0 AND average_confidence <= 1', name='valid_confidence_range'),
         CheckConstraint('length(country_schema) = 3', name='valid_country_schema'),
         CheckConstraint('processing_time_ms >= 0', name='positive_processing_time'),
+        CheckConstraint('xml_file_size >= 0', name='positive_xml_file_size'),
+        CheckConstraint(
+            "xml_generation_status IN ('PENDING', 'GENERATING', 'COMPLETED', 'FAILED') OR xml_generation_status IS NULL", 
+            name='valid_xml_generation_status'
+        ),
     )
     
     # Relationships

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
-from src.api.v1 import auth, processing, admin, ws
+from src.api.v1 import auth, processing, admin, xml_generation, ws
 from src.core.config import settings
 from src.middleware import setup_rate_limiting
 
@@ -52,6 +52,7 @@ setup_rate_limiting(app)
 # API routes
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(processing.router, prefix="/api/v1/processing", tags=["processing"])
+app.include_router(xml_generation.router, prefix="/api/v1", tags=["xml-generation"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(ws.router, prefix="/api/v1/ws", tags=["websocket"])
 

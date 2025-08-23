@@ -9,7 +9,7 @@ import time
 from decimal import Decimal
 from loguru import logger
 import mimetypes
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 import pandas as pd
@@ -29,9 +29,20 @@ from src.schemas.processing import (
     ValidationSummary
 )
 from src.services.hs_matching_service import hs_matching_service, HSCodeMatchRequest
+from src.services.xml_generation import XMLGenerationService, CountrySchema
 from src.models.product_match import ProductMatch
 
 settings = get_settings()
+
+# Import WebSocket manager for progress updates
+try:
+    from src.api.v1.ws import manager as ws_manager
+except ImportError:
+    # If WebSocket manager not available, create a dummy one
+    class DummyWSManager:
+        async def send_processing_update(self, *args, **kwargs):
+            pass
+    ws_manager = DummyWSManager()
 
 # File validation constants
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
@@ -57,6 +68,7 @@ class FileProcessingService:
     def __init__(self, db: Session):
         self.db = db
         self.s3_client = None
+        self.xml_generation_service = XMLGenerationService()
         if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
             self.s3_client = boto3.client(
                 's3',
@@ -915,7 +927,7 @@ class FileProcessingService:
                 error_messages.append(f"HS code matching service failed: {str(e)}")
                 # Update job status to failed
                 processing_job.status = ProcessingStatus.FAILED
-                processing_job.error_details = f"HS code matching failed: {str(e)}"
+                processing_job.error_message = f"HS code matching failed: {str(e)}"
                 self.db.commit()
                 return created_matches, error_messages
             
@@ -971,7 +983,7 @@ class FileProcessingService:
                     processing_job.total_products = len(created_matches)
                 else:
                     processing_job.status = ProcessingStatus.COMPLETED_WITH_ERRORS
-                    processing_job.error_details = "; ".join(error_messages[:5])  # Limit error details
+                    processing_job.error_message = "; ".join(error_messages[:5])  # Limit error details
                 
                 self.db.commit()
                 
@@ -985,7 +997,7 @@ class FileProcessingService:
                 
                 # Update job status to failed
                 processing_job.status = ProcessingStatus.FAILED
-                processing_job.error_details = error_msg
+                processing_job.error_message = error_msg
                 self.db.commit()
             
             return created_matches, error_messages
@@ -996,7 +1008,7 @@ class FileProcessingService:
             
             # Update job status to failed
             processing_job.status = ProcessingStatus.FAILED
-            processing_job.error_details = str(e)
+            processing_job.error_message = str(e)
             self.db.commit()
             
             return created_matches, error_messages
@@ -1021,9 +1033,33 @@ class FileProcessingService:
         start_time = time.time()
         
         try:
+            # WebSocket: Notify file processing started
+            await ws_manager.send_processing_update(
+                job_id="pending",
+                user_id=str(user.id),
+                status="STARTED",
+                progress=5,
+                message="Starting file processing..."
+            )
+            
             # Step 1: Validate file upload
+            await ws_manager.send_processing_update(
+                job_id="pending",
+                user_id=str(user.id),
+                status="VALIDATING",
+                progress=10,
+                message="Validating file format and content..."
+            )
+            
             validation_result = await self.validate_file_upload(file)
             if not validation_result.is_valid:
+                await ws_manager.send_processing_update(
+                    job_id="pending",
+                    user_id=str(user.id),
+                    status="FAILED",
+                    progress=100,
+                    message="File validation failed"
+                )
                 return {
                     "success": False,
                     "error": "File validation failed",
@@ -1031,10 +1067,25 @@ class FileProcessingService:
                 }
             
             # Step 2: Check user credits
+            await ws_manager.send_processing_update(
+                job_id="pending",
+                user_id=str(user.id),
+                status="CHECKING_CREDITS",
+                progress=15,
+                message="Checking user credits..."
+            )
+            
             estimated_credits = self.calculate_processing_credits(validation_result.total_rows)
             credit_check = self.check_user_credits(user, estimated_credits)
             
             if not credit_check['has_sufficient_credits']:
+                await ws_manager.send_processing_update(
+                    job_id="pending",
+                    user_id=str(user.id),
+                    status="FAILED",
+                    progress=100,
+                    message="Insufficient credits for processing"
+                )
                 return {
                     "success": False,
                     "error": "Insufficient credits",
@@ -1050,17 +1101,40 @@ class FileProcessingService:
                 }
             
             # Step 4: Upload file to S3
+            await ws_manager.send_processing_update(
+                job_id="pending",
+                user_id=str(user.id),
+                status="UPLOADING",
+                progress=25,
+                message="Uploading file to secure storage..."
+            )
+            
             try:
                 file_url = await self.upload_file_to_s3(file, str(user.id))
             except Exception as e:
                 # Refund credits if S3 upload fails
                 self.refund_user_credits(user, estimated_credits)
+                await ws_manager.send_processing_update(
+                    job_id="pending",
+                    user_id=str(user.id),
+                    status="FAILED",
+                    progress=100,
+                    message=f"File upload failed: {str(e)}"
+                )
                 return {
                     "success": False,
                     "error": f"File upload failed: {str(e)}"
                 }
             
             # Step 5: Create processing job
+            await ws_manager.send_processing_update(
+                job_id="pending",
+                user_id=str(user.id),
+                status="CREATING_JOB",
+                progress=30,
+                message="Creating processing job..."
+            )
+            
             processing_job = self.create_processing_job(
                 user=user,
                 file_name=file.filename,
@@ -1069,6 +1143,15 @@ class FileProcessingService:
                 country_schema=country_schema,
                 credits_used=estimated_credits,
                 total_products=validation_result.total_rows
+            )
+            
+            # Update WebSocket with actual job ID
+            await ws_manager.send_processing_update(
+                job_id=str(processing_job.id),
+                user_id=str(user.id),
+                status="PARSING",
+                progress=35,
+                message="Parsing file data..."
             )
             
             # Step 6: Extract product data from file
@@ -1089,7 +1172,7 @@ class FileProcessingService:
                 # Refund credits if parsing fails
                 self.refund_user_credits(user, estimated_credits)
                 processing_job.status = ProcessingStatus.FAILED
-                processing_job.error_details = f"File parsing failed: {str(e)}"
+                processing_job.error_message = f"File parsing failed: {str(e)}"
                 self.db.commit()
                 
                 return {
@@ -1099,6 +1182,14 @@ class FileProcessingService:
                 }
             
             # Step 7: Process products with HS code matching
+            await ws_manager.send_processing_update(
+                job_id=str(processing_job.id),
+                user_id=str(user.id),
+                status="HS_MATCHING",
+                progress=50,
+                message=f"Matching HS codes for {len(products_data)} products..."
+            )
+            
             try:
                 product_matches, processing_errors = await self.process_products_with_hs_matching(
                     processing_job=processing_job,
@@ -1106,8 +1197,99 @@ class FileProcessingService:
                     country_schema=country_schema
                 )
                 
+                # Step 8: Generate XML file after successful HS matching
+                await ws_manager.send_processing_update(
+                    job_id=str(processing_job.id),
+                    user_id=str(user.id),
+                    status="GENERATING_XML",
+                    progress=75,
+                    message="Generating ASYCUDA-compliant XML file..."
+                )
+                
+                xml_generation_result = None
+                xml_errors = []
+                
+                if product_matches:  # Only generate XML if we have product matches
+                    try:
+                        # Update XML generation status to GENERATING
+                        processing_job.xml_generation_status = "GENERATING"
+                        self.db.commit()
+                        
+                        # Convert country schema to CountrySchema enum
+                        xml_country_schema = CountrySchema.TURKMENISTAN  # Default to Turkmenistan for now
+                        if country_schema.upper() == "TKM":
+                            xml_country_schema = CountrySchema.TURKMENISTAN
+                        
+                        # Generate XML using the XML Generation Service
+                        xml_generation_result = await self.xml_generation_service.generate_xml(
+                            processing_job=processing_job,
+                            product_matches=product_matches,
+                            country_schema=xml_country_schema
+                        )
+                        
+                        if xml_generation_result.success:
+                            # Update processing job with XML details (file is already stored by XML service)
+                            processing_job.output_xml_url = xml_generation_result.s3_url or xml_generation_result.download_url
+                            processing_job.xml_generation_status = "COMPLETED"
+                            processing_job.xml_generated_at = datetime.now(timezone.utc)
+                            processing_job.xml_file_size = xml_generation_result.file_size
+                            processing_job.status = ProcessingStatus.COMPLETED
+                            
+                            logger.info(
+                                f"XML generated and stored successfully for job {processing_job.id}, "
+                                f"storage type: {xml_generation_result.storage_type}, "
+                                f"size: {xml_generation_result.file_size} bytes"
+                            )
+                            
+                        else:
+                            # XML generation failed
+                            xml_errors = xml_generation_result.validation_errors or [xml_generation_result.error_message or "Unknown XML generation error"]
+                            processing_job.xml_generation_status = "FAILED"
+                            processing_job.status = ProcessingStatus.COMPLETED_WITH_ERRORS
+                            processing_job.error_message = f"XML generation failed: {'; '.join(xml_errors[:3])}"
+                            
+                            logger.warning(f"XML generation failed for job {processing_job.id}: {xml_errors}")
+                            
+                    except Exception as e:
+                        xml_error_msg = f"XML generation failed: {str(e)}"
+                        xml_errors.append(xml_error_msg)
+                        processing_job.xml_generation_status = "FAILED"
+                        processing_job.status = ProcessingStatus.COMPLETED_WITH_ERRORS
+                        processing_job.error_message = xml_error_msg
+                        
+                        logger.error(f"XML generation error for job {processing_job.id}: {str(e)}", exc_info=True)
+                else:
+                    # No product matches - mark as completed but without XML
+                    processing_job.xml_generation_status = "FAILED"
+                    processing_job.status = ProcessingStatus.COMPLETED
+                    xml_errors.append("No product matches available for XML generation")
+                
+                # Commit all updates to the processing job
+                self.db.commit()
+                
                 # Calculate final processing time
                 total_processing_time = (time.time() - start_time) * 1000
+                processing_job.processing_time_ms = int(total_processing_time)
+                self.db.commit()
+                
+                # Send completion notification
+                final_status = "COMPLETED" if not xml_errors else "COMPLETED_WITH_ERRORS"
+                final_message = "Processing completed successfully"
+                if xml_errors:
+                    final_message = f"Processing completed with warnings: {xml_errors[0]}"
+                
+                await ws_manager.send_processing_update(
+                    job_id=str(processing_job.id),
+                    user_id=str(user.id),
+                    status=final_status,
+                    progress=100,
+                    message=final_message,
+                    data={
+                        "products_processed": len(product_matches),
+                        "processing_time_ms": round(total_processing_time, 2),
+                        "xml_url": processing_job.output_xml_url
+                    }
+                )
                 
                 # Prepare success response
                 result = {
@@ -1115,6 +1297,7 @@ class FileProcessingService:
                     "job_id": str(processing_job.id),
                     "products_processed": len(product_matches),
                     "processing_errors": processing_errors,
+                    "xml_errors": xml_errors,
                     "credits_used": estimated_credits,
                     "processing_time_ms": round(total_processing_time, 2),
                     "validation_result": validation_result,
@@ -1124,6 +1307,11 @@ class FileProcessingService:
                         "medium_confidence": len([m for m in product_matches if 0.8 <= m.confidence_score < 0.95]),
                         "low_confidence": len([m for m in product_matches if m.confidence_score < 0.8]),
                         "requires_review": len([m for m in product_matches if m.requires_manual_review])
+                    },
+                    "xml_generation": {
+                        "success": xml_generation_result.success if xml_generation_result else False,
+                        "xml_url": processing_job.output_xml_url,
+                        "errors": xml_errors
                     }
                 }
                 
@@ -1133,7 +1321,7 @@ class FileProcessingService:
                 # If HS matching fails, refund credits and update job
                 self.refund_user_credits(user, estimated_credits)
                 processing_job.status = ProcessingStatus.FAILED
-                processing_job.error_details = f"HS code matching failed: {str(e)}"
+                processing_job.error_message = f"HS code matching failed: {str(e)}"
                 self.db.commit()
                 
                 return {

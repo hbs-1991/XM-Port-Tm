@@ -24,6 +24,9 @@ from ..core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Import storage service (will be initialized on first use)
+_xml_storage_service = None
+
 
 class CountrySchema(str, Enum):
     """Supported country schemas for XML generation"""
@@ -39,6 +42,11 @@ class XMLGenerationResult:
     success: bool
     xml_content: Optional[str] = None
     file_path: Optional[str] = None
+    s3_url: Optional[str] = None
+    s3_key: Optional[str] = None
+    file_size: Optional[int] = None
+    storage_type: Optional[str] = None
+    download_url: Optional[str] = None
     validation_errors: Optional[List[str]] = None
     error_message: Optional[str] = None
     generated_at: Optional[datetime] = None
@@ -111,6 +119,14 @@ class XMLGenerationService:
         
         logger.info("XMLGenerationService initialized successfully")
     
+    def _get_storage_service(self):
+        """Get XML storage service instance (lazy initialization)"""
+        global _xml_storage_service
+        if _xml_storage_service is None:
+            from .xml_storage import xml_storage_service
+            _xml_storage_service = xml_storage_service
+        return _xml_storage_service
+    
     async def generate_xml(
         self, 
         processing_job: ProcessingJob, 
@@ -158,19 +174,35 @@ class XMLGenerationService:
                         error_message="XML validation failed"
                     )
             
-            # Generate unique filename
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-            filename = f"{processing_job.id}_{country_schema.value}_{timestamp}.xml"
+            # Store XML file using storage service
+            storage_service = self._get_storage_service()
+            storage_result = await storage_service.upload_xml_file(processing_job, xml_content)
+            
+            if not storage_result['success']:
+                raise XMLGenerationError(f"Failed to store XML file: {storage_result.get('error', 'Unknown error')}")
+            
+            # Generate download URL
+            download_url = None
+            if storage_result.get('s3_key'):
+                try:
+                    download_url = storage_service.generate_download_url(storage_result['s3_key'])
+                except Exception as e:
+                    logger.warning(f"Failed to generate download URL: {str(e)}")
             
             logger.info(
-                f"Successfully generated XML for job {processing_job.id} "
-                f"with {len(product_matches)} products"
+                f"Successfully generated and stored XML for job {processing_job.id} "
+                f"with {len(product_matches)} products, size: {storage_result.get('file_size', 0)} bytes"
             )
             
             return XMLGenerationResult(
                 success=True,
                 xml_content=xml_content,
-                file_path=filename,
+                file_path=storage_result.get('file_path'),
+                s3_url=storage_result.get('url'),
+                s3_key=storage_result.get('s3_key'),
+                file_size=storage_result.get('file_size'),
+                storage_type=storage_result.get('storage_type'),
+                download_url=download_url,
                 generated_at=datetime.now(timezone.utc)
             )
             
@@ -339,7 +371,7 @@ class XMLGenerationService:
     
     def _validate_asycuda_structure(self, xml_content: str) -> List[str]:
         """
-        Validate ASYCUDA-specific XML structure
+        Validate ASYCUDA-specific XML structure for Turkmenistan
         
         Args:
             xml_content: XML content to validate
@@ -349,21 +381,163 @@ class XMLGenerationService:
         """
         errors = []
         
-        # Basic structure validation
-        required_elements = [
-            'Declaration',
-            'DeclarationHeader',
-            'DeclarationItems',
-            'DeclarationItem'
+        # Required ASYCUDA 4.1 root elements
+        required_root_elements = [
+            'ASYCUDA_Declaration',
+            'Document_Header',
+            'Declaration_Items',
+            'Summary'
         ]
         
-        for element in required_elements:
+        for element in required_root_elements:
             if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
-                errors.append(f"Missing required element: {element}")
+                errors.append(f"Missing required ASYCUDA root element: {element}")
         
-        # Additional ASYCUDA-specific validations can be added here
+        # Required header elements
+        required_header_elements = [
+            'Document_number',
+            'Registration_Date',
+            'Declaration_Type_Code',
+            'Customs_Office_Code',
+            'Currency_Code',
+            'Total_Number_of_Items'
+        ]
+        
+        for element in required_header_elements:
+            if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
+                errors.append(f"Missing required header element: {element}")
+        
+        # Required item elements (check for at least one item)
+        required_item_elements = [
+            'Item_Number',
+            'Commodity_Code',
+            'Commodity_Description',
+            'Country_of_Origin_Code'
+        ]
+        
+        for element in required_item_elements:
+            if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
+                errors.append(f"Missing required item element: {element}")
+        
+        # Validate ASYCUDA namespace
+        if 'xmlns="http://asycuda.org/asycuda"' not in xml_content:
+            errors.append("Missing ASYCUDA namespace declaration")
+        
+        # Validate version
+        if 'version="4.1"' not in xml_content:
+            errors.append("Missing or incorrect ASYCUDA version (should be 4.1)")
+        
+        # Validate Turkmenistan-specific elements
+        turkmenistan_elements = [
+            'Country_of_Destination>TKM',
+            'Customs_Office_Code>TKM001',
+            'Declaration_Type_Code>IM4'
+        ]
+        
+        for element in turkmenistan_elements:
+            if f'<{element}<' not in xml_content.replace('>', '<'):
+                errors.append(f"Missing Turkmenistan-specific element: {element}")
+        
+        # Validate tax structure
+        required_tax_elements = [
+            'Duty_Tax',
+            'Tax_line',
+            'Tax_type_Code',
+            'Tax_rate',
+            'Tax_amount'
+        ]
+        
+        for element in required_tax_elements:
+            if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
+                errors.append(f"Missing required tax element: {element}")
+        
+        # Validate signature elements
+        required_signature_elements = [
+            'Declaration_Signature',
+            'Signature_Method',
+            'Signature_Value'
+        ]
+        
+        for element in required_signature_elements:
+            if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
+                errors.append(f"Missing required signature element: {element}")
+        
+        # Additional business rule validations
+        self._validate_asycuda_business_rules(xml_content, errors)
         
         return errors
+    
+    def _validate_asycuda_business_rules(self, xml_content: str, errors: List[str]) -> None:
+        """
+        Validate ASYCUDA business rules
+        
+        Args:
+            xml_content: XML content to validate
+            errors: List to append validation errors to
+        """
+        try:
+            from xml.etree import ElementTree as ET
+            root = ET.fromstring(xml_content.encode('utf-8'))
+            
+            # Validate that total items count matches actual items
+            total_items_elem = root.find('.//Total_Number_of_Items')
+            items = root.findall('.//Item')
+            
+            if total_items_elem is not None and items:
+                declared_count = int(total_items_elem.text)
+                actual_count = len(items)
+                if declared_count != actual_count:
+                    errors.append(f"Item count mismatch: declared {declared_count}, actual {actual_count}")
+            
+            # Validate HS codes format (should be 6-10 digits)
+            commodity_codes = root.findall('.//Commodity_Code')
+            for code_elem in commodity_codes:
+                if code_elem.text:
+                    code = code_elem.text.strip()
+                    if not code.isdigit() or len(code) < 6 or len(code) > 10:
+                        errors.append(f"Invalid HS code format: {code}")
+            
+            # Validate currency codes (should be 3-letter ISO codes)
+            currency_codes = root.findall('.//Currency_Code')
+            for currency_elem in currency_codes:
+                if currency_elem.text:
+                    currency = currency_elem.text.strip()
+                    if len(currency) != 3 or not currency.isupper():
+                        errors.append(f"Invalid currency code format: {currency}")
+            
+            # Validate country codes (should be 3-letter ISO codes)
+            country_codes = root.findall('.//Country_of_Origin_Code')
+            for country_elem in country_codes:
+                if country_elem.text:
+                    country = country_elem.text.strip()
+                    if len(country) != 3 or not country.isupper():
+                        errors.append(f"Invalid country code format: {country}")
+            
+            # Validate numeric fields are positive
+            numeric_fields = [
+                './/Total_Invoice_Amount',
+                './/Item_Invoice_Amount',
+                './/Statistical_value',
+                './/Net_weight',
+                './/Gross_weight'
+            ]
+            
+            for field_xpath in numeric_fields:
+                elements = root.findall(field_xpath)
+                for elem in elements:
+                    if elem.text:
+                        try:
+                            value = float(elem.text)
+                            if value < 0:
+                                errors.append(f"Negative value not allowed in {field_xpath}: {value}")
+                        except ValueError:
+                            errors.append(f"Invalid numeric value in {field_xpath}: {elem.text}")
+                            
+        except ET.ParseError:
+            # XML parsing errors are handled in parent method
+            pass
+        except Exception as e:
+            errors.append(f"Business rule validation error: {str(e)}")
     
     def get_supported_countries(self) -> List[CountrySchema]:
         """Get list of supported country schemas"""

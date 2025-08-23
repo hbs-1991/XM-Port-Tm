@@ -44,6 +44,7 @@ python-dotenv
 pytest
 pytest-asyncio
 pytest-cov
+moto[s3]
 
 # Logging
 structlog
