@@ -204,3 +204,38 @@ async def get_project_owner_or_admin_user(current_user: User = Depends(get_curre
             detail="Project owner or admin access required"
         )
     return current_user
+
+
+async def get_current_user_ws(token: str) -> User:
+    """
+    WebSocket-specific authentication function.
+    
+    Args:
+        token: JWT token passed as query parameter or in initial message
+        
+    Returns:
+        Authenticated user if token is valid
+        
+    Raises:
+        Exception: If token is invalid or user not found
+    """
+    try:
+        # Validate access token
+        payload = auth_service.validate_access_token(token)
+        user_id = payload.get("sub")
+        
+        if not user_id:
+            raise Exception("Invalid token: missing user ID")
+        
+        # Get user from database
+        user = await user_repository.get_by_id(UUID(user_id))
+        if not user:
+            raise Exception("User not found")
+        
+        if not user.is_active:
+            raise Exception("User account is disabled")
+        
+        return user
+        
+    except Exception as e:
+        raise Exception(f"WebSocket authentication failed: {str(e)}")

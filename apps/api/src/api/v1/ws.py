@@ -72,13 +72,17 @@ async def websocket_processing_updates(
 ):
     """WebSocket endpoint for real-time processing updates"""
     try:
-        # Get user from token (simplified - in production, implement proper WebSocket auth)
-        user_id = None
+        # Authenticate user via token
+        user = None
         if token:
-            # For now, assume token is user_id - in production, decode JWT token
-            user_id = token
-        
-        if not user_id:
+            try:
+                user = await get_current_user_ws(token)
+                user_id = str(user.id)
+            except Exception as e:
+                logger.warning(f"WebSocket authentication failed: {e}")
+                await websocket.close(code=4001, reason="Authentication failed")
+                return
+        else:
             await websocket.close(code=4001, reason="Authentication required")
             return
         
