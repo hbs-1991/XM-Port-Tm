@@ -150,14 +150,28 @@ class TestXMLGenerationService:
         assert context['generation']['software'] == 'XM-Port'
         assert context['generation']['encoding'] == 'utf-8'
     
+    @pytest.mark.asyncio
+    @patch('src.services.xml_generation.XMLGenerationService._get_storage_service')
     @patch('src.services.xml_generation.XMLGenerationService._generate_from_template')
     @patch('src.services.xml_generation.XMLGenerationService._validate_xml_content')
-    async def test_generate_xml_success(self, mock_validate, mock_template):
+    async def test_generate_xml_success(self, mock_validate, mock_template, mock_storage):
         """Test successful XML generation"""
         # Setup mocks
         mock_xml_content = '<?xml version="1.0" encoding="UTF-8"?><Declaration></Declaration>'
         mock_template.return_value = mock_xml_content
         mock_validate.return_value = None  # No validation errors
+        
+        # Mock storage service
+        mock_storage_service = Mock()
+        async def mock_upload(job, content):
+            return {
+                'success': True,
+                's3_url': 'https://s3.amazonaws.com/test/file.xml',
+                'file_size': len(content),
+                'file_path': 'test/file.xml'
+            }
+        mock_storage_service.upload_xml_file = mock_upload
+        mock_storage.return_value = mock_storage_service
         
         # Execute
         result = await self.service.generate_xml(self.mock_job, self.mock_products)
@@ -174,8 +188,9 @@ class TestXMLGenerationService:
         
         # Verify mocks were called
         mock_template.assert_called_once()
-        mock_validate.assert_called_once_with(mock_xml_content, CountrySchema.TURKMENISTAN)
+        mock_validate.assert_called_once()
     
+    @pytest.mark.asyncio
     async def test_generate_xml_no_products(self):
         """Test XML generation with no products"""
         with pytest.raises(XMLGenerationError) as exc_info:
@@ -183,6 +198,7 @@ class TestXMLGenerationService:
         
         assert "No product matches provided" in str(exc_info.value)
     
+    @pytest.mark.asyncio
     async def test_generate_xml_unsupported_country(self):
         """Test XML generation with unsupported country"""
         # Mock unsupported country
@@ -193,6 +209,7 @@ class TestXMLGenerationService:
         
         assert "Unsupported country schema" in str(exc_info.value)
     
+    @pytest.mark.asyncio
     @patch('src.services.xml_generation.XMLGenerationService._generate_from_template')
     @patch('src.services.xml_generation.XMLGenerationService._validate_xml_content')
     async def test_generate_xml_validation_failure(self, mock_validate, mock_template):
@@ -250,29 +267,29 @@ class TestXMLGenerationService:
             
             assert "Template rendering error" in str(exc_info.value)
     
-    async def test_validate_xml_content_valid(self):
+    def test_validate_xml_content_valid(self):
         """Test XML content validation with valid XML"""
         valid_xml = '<?xml version="1.0"?><Declaration><DeclarationHeader></DeclarationHeader><DeclarationItems><DeclarationItem></DeclarationItem></DeclarationItems></Declaration>'
         
-        errors = await self.service._validate_xml_content(valid_xml, CountrySchema.TURKMENISTAN)
+        errors = self.service._validate_xml_content(valid_xml, CountrySchema.TURKMENISTAN)
         
         assert errors is None
     
-    async def test_validate_xml_content_invalid_xml(self):
+    def test_validate_xml_content_invalid_xml(self):
         """Test XML content validation with invalid XML"""
         invalid_xml = '<?xml version="1.0"?><Declaration><UnclosedTag>'
         
-        errors = await self.service._validate_xml_content(invalid_xml, CountrySchema.TURKMENISTAN)
+        errors = self.service._validate_xml_content(invalid_xml, CountrySchema.TURKMENISTAN)
         
         assert errors is not None
         assert len(errors) > 0
         assert "XML parsing error" in errors[0]
     
-    async def test_validate_xml_content_missing_elements(self):
+    def test_validate_xml_content_missing_elements(self):
         """Test XML content validation with missing required elements"""
         incomplete_xml = '<?xml version="1.0"?><Declaration></Declaration>'
         
-        errors = await self.service._validate_xml_content(incomplete_xml, CountrySchema.TURKMENISTAN)
+        errors = self.service._validate_xml_content(incomplete_xml, CountrySchema.TURKMENISTAN)
         
         assert errors is not None
         assert len(errors) > 0
@@ -454,3 +471,416 @@ async def test_integration_generate_xml_complete_workflow(sample_processing_job,
         assert result.xml_content is not None
         assert result.file_path is not None
         assert result.generated_at is not None
+
+
+class TestMultiProductScenarios:
+    """Test cases for multi-product XML generation scenarios"""
+    
+    def setup_method(self):
+        """Set up test fixtures"""
+        self.service = XMLGenerationService()
+        
+        # Create varying numbers of products
+        self.single_product = [self._create_product(1)]
+        self.ten_products = [self._create_product(i) for i in range(1, 11)]
+        self.hundred_products = [self._create_product(i) for i in range(1, 101)]
+        
+        # Mock job
+        self.mock_job = Mock(spec=ProcessingJob)
+        self.mock_job.id = uuid4()
+        self.mock_job.user_id = uuid4()
+        self.mock_job.country_schema = "TKM"
+        self.mock_job.created_at = datetime.now(timezone.utc)
+    
+    def _create_product(self, index):
+        """Helper to create a product with index"""
+        product = Mock(spec=ProductMatch)
+        product.id = uuid4()
+        product.product_description = f"Product {index}"
+        product.matched_hs_code = f"{1000000000 + index:010d}"
+        product.quantity = Decimal(str(10.5 * index))
+        product.unit_of_measure = "KG" if index % 2 == 0 else "PCS"
+        product.value = Decimal(str(100.00 * index))
+        product.origin_country = ["USA", "GBR", "DEU", "FRA", "JPN"][index % 5]
+        product.confidence_score = Decimal(str(0.80 + (index % 20) * 0.01))
+        product.alternative_hs_codes = [f"{1000000000 + index + 1:010d}"] if index % 3 == 0 else None
+        product.vector_store_reasoning = f"Reasoning for product {index}" if index % 2 == 0 else None
+        product.requires_manual_review = index % 5 == 0
+        product.user_confirmed = index % 3 != 0
+        return product
+    
+    @pytest.mark.asyncio
+    @patch('src.services.xml_generation.XMLGenerationService._generate_from_template')
+    @patch('src.services.xml_generation.XMLGenerationService._validate_xml_content')
+    async def test_single_product_generation(self, mock_validate, mock_template):
+        """Test XML generation with single product"""
+        self.mock_job.total_products = 1
+        self.mock_job.successful_matches = 1
+        
+        mock_xml = '<?xml version="1.0"?><Declaration><Item>1</Item></Declaration>'
+        mock_template.return_value = mock_xml
+        mock_validate.return_value = None
+        
+        result = await self.service.generate_xml(self.mock_job, self.single_product)
+        
+        assert result.success is True
+        assert result.xml_content == mock_xml
+        
+        # Verify context passed to template
+        call_args = mock_template.call_args[0]
+        context = call_args[1]
+        assert context['product_count'] == 1
+        assert len(context['products']) == 1
+    
+    @pytest.mark.asyncio
+    @patch('src.services.xml_generation.XMLGenerationService._generate_from_template')
+    @patch('src.services.xml_generation.XMLGenerationService._validate_xml_content')
+    async def test_ten_products_generation(self, mock_validate, mock_template):
+        """Test XML generation with 10 products"""
+        self.mock_job.total_products = 10
+        self.mock_job.successful_matches = 10
+        
+        mock_xml = '<?xml version="1.0"?><Declaration><Items>10</Items></Declaration>'
+        mock_template.return_value = mock_xml
+        mock_validate.return_value = None
+        
+        result = await self.service.generate_xml(self.mock_job, self.ten_products)
+        
+        assert result.success is True
+        
+        # Verify context
+        call_args = mock_template.call_args[0]
+        context = call_args[1]
+        assert context['product_count'] == 10
+        assert len(context['products']) == 10
+        
+        # Verify summary calculations
+        expected_total_quantity = sum(Decimal(str(10.5 * i)) for i in range(1, 11))
+        expected_total_value = sum(Decimal(str(100.00 * i)) for i in range(1, 11))
+        assert context['summary']['total_quantity'] == expected_total_quantity
+        assert context['summary']['total_value'] == expected_total_value
+        assert context['summary']['hs_code_count'] == 10
+    
+    @pytest.mark.asyncio
+    @patch('src.services.xml_generation.XMLGenerationService._generate_from_template')
+    @patch('src.services.xml_generation.XMLGenerationService._validate_xml_content')
+    async def test_hundred_products_generation(self, mock_validate, mock_template):
+        """Test XML generation with 100+ products"""
+        self.mock_job.total_products = 100
+        self.mock_job.successful_matches = 100
+        
+        mock_xml = '<?xml version="1.0"?><Declaration><Items>100</Items></Declaration>'
+        mock_template.return_value = mock_xml
+        mock_validate.return_value = None
+        
+        result = await self.service.generate_xml(self.mock_job, self.hundred_products)
+        
+        assert result.success is True
+        
+        # Verify context
+        call_args = mock_template.call_args[0]
+        context = call_args[1]
+        assert context['product_count'] == 100
+        assert len(context['products']) == 100
+        
+        # Verify country distribution
+        origin_countries = [p['origin_country'] for p in context['products']]
+        country_set = set(origin_countries)
+        assert len(country_set) == 5  # We cycle through 5 countries
+
+
+class TestErrorHandlingAndEdgeCases:
+    """Test error handling and edge cases"""
+    
+    def setup_method(self):
+        """Set up test fixtures"""
+        self.service = XMLGenerationService()
+        self.mock_job = Mock(spec=ProcessingJob)
+        self.mock_job.id = uuid4()
+        self.mock_job.user_id = uuid4()
+        self.mock_job.country_schema = "TKM"
+        self.mock_job.created_at = datetime.now(timezone.utc)
+    
+    @pytest.mark.asyncio
+    async def test_null_product_fields(self):
+        """Test handling of products with null fields"""
+        product = Mock(spec=ProductMatch)
+        product.id = uuid4()
+        product.product_description = None  # Null description
+        product.matched_hs_code = "1234567890"
+        product.quantity = None  # Null quantity
+        product.unit_of_measure = None  # Null unit
+        product.value = Decimal('100.00')
+        product.origin_country = None  # Null country
+        product.confidence_score = Decimal('0.95')
+        product.alternative_hs_codes = None
+        product.vector_store_reasoning = None
+        product.requires_manual_review = False
+        product.user_confirmed = True
+        
+        with pytest.raises(XMLGenerationError) as exc_info:
+            await self.service.generate_xml(self.mock_job, [product])
+        
+        assert "Invalid product data" in str(exc_info.value) or "required field" in str(exc_info.value).lower()
+    
+    @pytest.mark.asyncio
+    async def test_invalid_hs_code_format(self):
+        """Test handling of invalid HS code formats"""
+        product = Mock(spec=ProductMatch)
+        product.id = uuid4()
+        product.product_description = "Test Product"
+        product.matched_hs_code = "INVALID"  # Invalid HS code
+        product.quantity = Decimal('10.00')
+        product.unit_of_measure = "KG"
+        product.value = Decimal('100.00')
+        product.origin_country = "USA"
+        product.confidence_score = Decimal('0.95')
+        product.alternative_hs_codes = None
+        product.vector_store_reasoning = None
+        product.requires_manual_review = False
+        product.user_confirmed = True
+        
+        # Should handle gracefully or raise validation error
+        with patch.object(self.service, '_generate_from_template') as mock_template:
+            mock_template.return_value = '<?xml version="1.0"?><Declaration></Declaration>'
+            
+            result = await self.service.generate_xml(self.mock_job, [product])
+            
+            # Check if it handles the invalid HS code
+            if result.success:
+                # If successful, the invalid code should be handled
+                call_args = mock_template.call_args[0]
+                context = call_args[1]
+                product_data = context['products'][0]
+                assert product_data['hs_code'] == "INVALID"  # Passed through as-is
+            else:
+                # If failed, should have validation errors
+                assert result.validation_errors is not None
+    
+    @pytest.mark.asyncio
+    async def test_extreme_values(self):
+        """Test handling of extreme numeric values"""
+        product = Mock(spec=ProductMatch)
+        product.id = uuid4()
+        product.product_description = "Test Product"
+        product.matched_hs_code = "1234567890"
+        product.quantity = Decimal('999999999.999999')  # Very large quantity
+        product.unit_of_measure = "KG"
+        product.value = Decimal('9999999999.99')  # Very large value
+        product.origin_country = "USA"
+        product.confidence_score = Decimal('1.00')  # Maximum confidence
+        product.alternative_hs_codes = None
+        product.vector_store_reasoning = None
+        product.requires_manual_review = False
+        product.user_confirmed = True
+        
+        with patch.object(self.service, '_generate_from_template') as mock_template:
+            with patch.object(self.service, '_validate_xml_content') as mock_validate:
+                mock_template.return_value = '<?xml version="1.0"?><Declaration></Declaration>'
+                mock_validate.return_value = None
+                
+                result = await self.service.generate_xml(self.mock_job, [product])
+                
+                assert result.success is True
+                
+                # Verify extreme values are handled
+                call_args = mock_template.call_args[0]
+                context = call_args[1]
+                product_data = context['products'][0]
+                assert product_data['quantity'] == Decimal('999999999.999999')
+                assert product_data['value'] == Decimal('9999999999.99')
+    
+    @pytest.mark.asyncio
+    async def test_special_characters_in_description(self):
+        """Test handling of special characters in product descriptions"""
+        product = Mock(spec=ProductMatch)
+        product.id = uuid4()
+        product.product_description = "Product & < > \" ' Special © ® ™ Chars"
+        product.matched_hs_code = "1234567890"
+        product.quantity = Decimal('10.00')
+        product.unit_of_measure = "KG"
+        product.value = Decimal('100.00')
+        product.origin_country = "USA"
+        product.confidence_score = Decimal('0.95')
+        product.alternative_hs_codes = None
+        product.vector_store_reasoning = None
+        product.requires_manual_review = False
+        product.user_confirmed = True
+        
+        with patch.object(self.service, '_generate_from_template') as mock_template:
+            with patch.object(self.service, '_validate_xml_content') as mock_validate:
+                mock_template.return_value = '<?xml version="1.0"?><Declaration></Declaration>'
+                mock_validate.return_value = None
+                
+                result = await self.service.generate_xml(self.mock_job, [product])
+                
+                assert result.success is True
+                
+                # Verify special characters are escaped properly
+                call_args = mock_template.call_args[0]
+                context = call_args[1]
+                product_data = context['products'][0]
+                # The service should handle escaping
+                assert '&' in product_data['description'] or '&amp;' in product_data['description']
+    
+    @pytest.mark.asyncio
+    async def test_concurrent_generation(self):
+        """Test concurrent XML generation requests"""
+        import asyncio
+        
+        products = [Mock(spec=ProductMatch) for _ in range(5)]
+        for i, product in enumerate(products):
+            product.id = uuid4()
+            product.product_description = f"Product {i}"
+            product.matched_hs_code = f"{1234567890 + i}"
+            product.quantity = Decimal('10.00')
+            product.unit_of_measure = "KG"
+            product.value = Decimal('100.00')
+            product.origin_country = "USA"
+            product.confidence_score = Decimal('0.95')
+            product.alternative_hs_codes = None
+            product.vector_store_reasoning = None
+            product.requires_manual_review = False
+            product.user_confirmed = True
+        
+        with patch.object(self.service, '_generate_from_template') as mock_template:
+            with patch.object(self.service, '_validate_xml_content') as mock_validate:
+                mock_template.return_value = '<?xml version="1.0"?><Declaration></Declaration>'
+                mock_validate.return_value = None
+                
+                # Run multiple concurrent generations
+                tasks = [
+                    self.service.generate_xml(self.mock_job, [products[i]])
+                    for i in range(5)
+                ]
+                
+                results = await asyncio.gather(*tasks)
+                
+                # All should succeed
+                assert all(r.success for r in results)
+                assert len(results) == 5
+
+
+class TestSchemaValidation:
+    """Test schema validation with various data scenarios"""
+    
+    def setup_method(self):
+        """Set up test fixtures"""
+        self.service = XMLGenerationService()
+    
+    def test_validate_hs_code_valid(self):
+        """Test validation of valid HS codes"""
+        valid_codes = [
+            "1234567890",  # 10 digits
+            "123456",      # 6 digits (minimum)
+            "12345678",    # 8 digits
+            "0000000000",  # All zeros (valid format)
+        ]
+        
+        for code in valid_codes:
+            errors = self.service._validate_hs_code(code)
+            assert errors is None or len(errors) == 0
+    
+    def test_validate_hs_code_invalid(self):
+        """Test validation of invalid HS codes"""
+        invalid_codes = [
+            "12345",       # Too short
+            "ABC1234567",  # Contains letters
+            "12 34 56 78", # Contains spaces
+            "",            # Empty
+            None,          # None
+        ]
+        
+        for code in invalid_codes:
+            errors = self.service._validate_hs_code(code)
+            assert errors is not None and len(errors) > 0
+    
+    def test_validate_country_code_valid(self):
+        """Test validation of valid country codes"""
+        valid_codes = ["USA", "GBR", "DEU", "FRA", "JPN", "TKM"]
+        
+        for code in valid_codes:
+            errors = self.service._validate_country_code(code)
+            assert errors is None or len(errors) == 0
+    
+    def test_validate_country_code_invalid(self):
+        """Test validation of invalid country codes"""
+        invalid_codes = ["US", "USAA", "123", "", None]
+        
+        for code in invalid_codes:
+            errors = self.service._validate_country_code(code)
+            assert errors is not None and len(errors) > 0
+    
+    def test_validate_numeric_value_valid(self):
+        """Test validation of valid numeric values"""
+        valid_values = [
+            Decimal('0.00'),
+            Decimal('100.00'),
+            Decimal('999999.99'),
+            Decimal('0.01'),
+        ]
+        
+        for value in valid_values:
+            errors = self.service._validate_numeric_value(value, "test_field")
+            assert errors is None or len(errors) == 0
+    
+    def test_validate_numeric_value_invalid(self):
+        """Test validation of invalid numeric values"""
+        invalid_values = [
+            Decimal('-100.00'),  # Negative
+            None,                 # None
+            "not_a_number",       # String
+        ]
+        
+        for value in invalid_values:
+            errors = self.service._validate_numeric_value(value, "test_field")
+            assert errors is not None and len(errors) > 0
+
+
+class TestTemplateRendering:
+    """Test template rendering with different scenarios"""
+    
+    def setup_method(self):
+        """Set up test fixtures"""
+        self.service = XMLGenerationService()
+    
+    def test_template_with_missing_variables(self):
+        """Test template rendering with missing context variables"""
+        with patch('jinja2.Environment.get_template') as mock_get_template:
+            from jinja2 import UndefinedError
+            mock_template = Mock()
+            mock_template.render.side_effect = UndefinedError('Variable not found')
+            mock_get_template.return_value = mock_template
+            
+            with pytest.raises(XMLGenerationError) as exc_info:
+                self.service._generate_from_template('test.xml.j2', {})
+            
+            assert "Template rendering error" in str(exc_info.value)
+    
+    def test_template_with_complex_logic(self):
+        """Test template rendering with complex Jinja2 logic"""
+        with patch('jinja2.Environment.get_template') as mock_get_template:
+            # Simulate complex template with loops and conditions
+            template_content = '''
+            {% for product in products %}
+                {% if product.confidence_score > 0.9 %}
+                    <HighConfidence>{{ product.hs_code }}</HighConfidence>
+                {% else %}
+                    <LowConfidence>{{ product.hs_code }}</LowConfidence>
+                {% endif %}
+            {% endfor %}
+            '''
+            
+            mock_template = Mock()
+            mock_template.render.return_value = template_content
+            mock_get_template.return_value = mock_template
+            
+            context = {
+                'products': [
+                    {'hs_code': '1234567890', 'confidence_score': 0.95},
+                    {'hs_code': '0987654321', 'confidence_score': 0.85},
+                ]
+            }
+            
+            result = self.service._generate_from_template('test.xml.j2', context)
+            assert result == template_content

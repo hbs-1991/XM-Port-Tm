@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from dataclasses import dataclass
 from enum import Enum
 
@@ -546,6 +546,106 @@ class XMLGenerationService:
     def get_country_config(self, country_schema: CountrySchema) -> Optional[XMLGenerationConfig]:
         """Get configuration for a specific country schema"""
         return self._country_configs.get(country_schema)
+    
+    def _validate_hs_code(self, hs_code: Optional[str]) -> Optional[List[str]]:
+        """Validate HS code format
+        
+        Args:
+            hs_code: HS code to validate
+            
+        Returns:
+            List of validation errors or None if valid
+        """
+        errors = []
+        
+        if hs_code is None:
+            errors.append("HS code is required")
+            return errors
+        
+        if not hs_code:
+            errors.append("HS code cannot be empty")
+            return errors
+        
+        # HS codes should be 6-10 digits
+        if len(hs_code) < 6:
+            errors.append(f"HS code too short: {hs_code} (minimum 6 digits)")
+        elif len(hs_code) > 10:
+            errors.append(f"HS code too long: {hs_code} (maximum 10 digits)")
+        
+        # Should contain only digits
+        if not hs_code.isdigit():
+            errors.append(f"HS code must contain only digits: {hs_code}")
+        
+        return errors if errors else None
+    
+    def _validate_country_code(self, country_code: Optional[str]) -> Optional[List[str]]:
+        """Validate country code format (ISO 3166-1 alpha-3)
+        
+        Args:
+            country_code: Country code to validate
+            
+        Returns:
+            List of validation errors or None if valid
+        """
+        errors = []
+        
+        if country_code is None:
+            errors.append("Country code is required")
+            return errors
+        
+        if not country_code:
+            errors.append("Country code cannot be empty")
+            return errors
+        
+        # Country codes should be exactly 3 uppercase letters
+        if len(country_code) != 3:
+            errors.append(f"Country code must be exactly 3 characters: {country_code}")
+        
+        if not country_code.isupper() or not country_code.isalpha():
+            errors.append(f"Country code must be 3 uppercase letters: {country_code}")
+        
+        return errors if errors else None
+    
+    def _validate_numeric_value(self, value: Any, field_name: str) -> Optional[List[str]]:
+        """Validate numeric value
+        
+        Args:
+            value: Value to validate
+            field_name: Name of the field being validated
+            
+        Returns:
+            List of validation errors or None if valid
+        """
+        errors = []
+        
+        if value is None:
+            errors.append(f"{field_name} is required")
+            return errors
+        
+        # Check if it's a valid numeric type
+        if not isinstance(value, (int, float, Decimal)):
+            if isinstance(value, str):
+                try:
+                    Decimal(value)
+                except (ValueError, InvalidOperation):
+                    errors.append(f"{field_name} must be a valid number: {value}")
+                    return errors
+            else:
+                errors.append(f"{field_name} must be numeric: {type(value)}")
+                return errors
+        
+        # Convert to Decimal for consistent handling
+        try:
+            decimal_value = Decimal(str(value))
+            
+            # Check if negative
+            if decimal_value < 0:
+                errors.append(f"{field_name} cannot be negative: {decimal_value}")
+            
+        except (ValueError, InvalidOperation):
+            errors.append(f"{field_name} is not a valid number: {value}")
+        
+        return errors if errors else None
 
 
 # Service instance
