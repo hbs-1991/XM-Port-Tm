@@ -17,6 +17,7 @@
   - File history
   - Credit system
   - Download functionality
+  - Modern landing page about XM-Port
 
   Epic 4: Testing & Refinement 
   - Pilot customer testing
