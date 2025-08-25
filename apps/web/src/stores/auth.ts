@@ -5,13 +5,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { signIn, signOut, getSession } from 'next-auth/react'
 import type { Session } from 'next-auth'
-
-interface User {
-  id: string
-  email: string
-  name: string
-  role: string
-}
+import type { User } from '@xm-port/shared/types'
 
 interface AuthState {
   user: User | null
@@ -100,12 +94,7 @@ export const useAuthStore = create<AuthState>()(
           if (session?.user) {
             set({
               session,
-              user: {
-                id: session.user.id,
-                email: session.user.email,
-                name: session.user.name || '',
-                role: session.user.role,
-              },
+              user: session.user as User,
               isAuthenticated: true,
             })
           } else {
@@ -129,7 +118,8 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null })
         
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+          const response = await fetch(`${apiUrl}/api/v1/auth/register`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -171,12 +161,7 @@ export const useAuthStore = create<AuthState>()(
         if (session?.user) {
           set({
             session,
-            user: {
-              id: session.user.id,
-              email: session.user.email,
-              name: session.user.name || '',
-              role: session.user.role,
-            },
+            user: session.user as User,
             isAuthenticated: true,
           })
         } else {

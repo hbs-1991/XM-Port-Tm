@@ -195,7 +195,7 @@ export function EditableSpreadsheet({
     const newData = [...localData];
     
     // Convert numeric fields
-    let processedValue = editValue;
+    let processedValue: any = editValue;
     if (['Quantity', 'Value', 'Unit Price'].includes(editingCell.column)) {
       const numValue = parseFloat(editValue);
       if (!isNaN(numValue)) {

@@ -20,7 +20,8 @@ const authOptions: NextAuthOptions = {
 
         try {
           // Call our backend API for authentication
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+          const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -37,12 +38,22 @@ const authOptions: NextAuthOptions = {
 
           const data = await response.json()
 
-          // Return user object with tokens
+          // Return user object with tokens and complete user data
           return {
             id: data.user.id,
             email: data.user.email,
-            name: `${data.user.first_name} ${data.user.last_name}`,
+            hashedPassword: '', // Don't expose password
+            firstName: data.user.first_name,
+            lastName: data.user.last_name,
             role: data.user.role,
+            subscriptionTier: data.user.subscription_tier,
+            creditsRemaining: data.user.credits_remaining,
+            creditsUsedThisMonth: data.user.credits_used_this_month,
+            companyName: data.user.company_name,
+            country: data.user.country,
+            createdAt: new Date(data.user.created_at),
+            lastLoginAt: data.user.last_login_at ? new Date(data.user.last_login_at) : undefined,
+            isActive: data.user.is_active,
             accessToken: data.tokens.access_token,
             refreshToken: data.tokens.refresh_token,
           }
@@ -91,10 +102,12 @@ const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       // Persist tokens and user info in JWT
       if (account && user) {
-        token.accessToken = user.accessToken
-        token.refreshToken = user.refreshToken
-        token.role = user.role
-        token.userId = user.id
+        const extendedUser = user as any
+        token.accessToken = extendedUser.accessToken
+        token.refreshToken = extendedUser.refreshToken
+        token.role = extendedUser.role
+        token.userId = extendedUser.id
+        token.accessTokenExpires = Math.floor(Date.now() / 1000) + (15 * 60) // 15 minutes
       }
 
       // Check if access token needs refresh (within 2 minutes of expiry)
@@ -109,8 +122,14 @@ const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error('Token refresh failed:', error)
-          // Force re-login by returning empty token
-          return {}
+          // Force re-login by returning proper JWT structure
+          return {
+            userId: token.userId,
+            role: token.role,
+            accessToken: '',
+            refreshToken: '',
+            accessTokenExpires: 0,
+          }
         }
       }
 
@@ -118,16 +137,40 @@ const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       // Send properties to the client
-      session.user.id = token.userId as string
-      session.user.role = token.role as string
-      session.accessToken = token.accessToken as string
-      session.refreshToken = token.refreshToken as string
+      if (token.userId) {
+        session.user.id = token.userId as string
+        session.user.role = token.role as string
+        session.accessToken = token.accessToken as string
+        session.refreshToken = token.refreshToken as string
+        
+        // Fetch full user data for session
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+          const response = await fetch(`${apiUrl}/api/v1/users/profile`, {
+            headers: {
+              'Authorization': `Bearer ${token.accessToken}`,
+            },
+          })
+          
+          if (response.ok) {
+            const userData = await response.json()
+            session.user = {
+              ...session.user,
+              ...userData,
+              accessToken: token.accessToken as string,
+              refreshToken: token.refreshToken as string,
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch user profile:', error)
+        }
+      }
+      
       return session
     }
   },
   pages: {
     signIn: '/auth/login',
-    signUp: '/auth/register',
     error: '/auth/error',
   },
   secret: process.env.NEXTAUTH_SECRET,
@@ -139,7 +182,8 @@ const authOptions: NextAuthOptions = {
  */
 async function refreshAccessToken(refreshToken: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`, {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

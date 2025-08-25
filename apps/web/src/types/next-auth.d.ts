@@ -3,24 +3,19 @@
  */
 import 'next-auth'
 import 'next-auth/jwt'
+import type { User as SharedUser } from '@xm-port/shared/types'
 
 declare module 'next-auth' {
   interface Session {
-    user: {
-      id: string
-      email: string
-      name: string
-      role: string
+    user: SharedUser & {
+      accessToken: string
+      refreshToken: string
     }
     accessToken: string
     refreshToken: string
   }
 
-  interface User {
-    id: string
-    email: string
-    name: string
-    role: string
+  interface User extends SharedUser {
     accessToken: string
     refreshToken: string
   }

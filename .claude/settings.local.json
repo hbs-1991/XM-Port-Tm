@@ -105,7 +105,10 @@
       "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python3 -m pytest apps/api/tests/integration/test_file_processing_xml_integration.py::TestFileProcessingXMLIntegration::test_end_to_end_workflow_success -v)",
       "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python3 -m pytest tests/integration/test_file_processing_xml_integration.py::TestFileProcessingXMLIntegration::test_end_to_end_workflow_success -v)",
       "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest apps/api/tests/unit/test_xml_generation_service.py::TestXMLGenerationService::test_initialization_success -v)",
-      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python3 -m pytest apps/api/tests/unit/test_xml_generation_service.py::TestXMLGenerationService::test_initialization_success -v)"
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python3 -m pytest apps/api/tests/unit/test_xml_generation_service.py::TestXMLGenerationService::test_initialization_success -v)",
+      "Bash(npm run lint:*)",
+      "Bash(alembic current:*)",
+      "Bash(PYTHONPATH=/mnt/d/PROJECTS/XM-PORT/apps/api python3 -m alembic.config current)"
     ],
     "deny": [],
     "ask": []
