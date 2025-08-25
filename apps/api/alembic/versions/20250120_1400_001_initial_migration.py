@@ -20,7 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # Create users table
     op.create_table('users',
-        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.Column('email', sa.String(), nullable=False),
@@ -36,27 +36,23 @@ def upgrade() -> None:
     
     # Create hs_codes table
     op.create_table('hs_codes',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), nullable=False),
-        sa.Column('code', sa.String(length=20), nullable=False),
+        sa.Column('code', sa.String(length=10), nullable=False),
         sa.Column('description', sa.Text(), nullable=False),
         sa.Column('category', sa.String(), nullable=False),
         sa.Column('embedding_vector', sa.String(), nullable=True),
         sa.Column('tariff_rate', sa.Float(), nullable=True),
         sa.Column('units', sa.String(), nullable=True),
         sa.Column('is_restricted', sa.String(), nullable=True),
-        sa.PrimaryKeyConstraint('id')
+        sa.PrimaryKeyConstraint('code')
     )
-    op.create_index(op.f('ix_hs_codes_id'), 'hs_codes', ['id'], unique=False)
     op.create_index(op.f('ix_hs_codes_code'), 'hs_codes', ['code'], unique=True)
     
     # Create processing_jobs table
     op.create_table('processing_jobs',
-        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
-        sa.Column('user_id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('filename', sa.String(), nullable=False),
         sa.Column('original_filename', sa.String(), nullable=False),
         sa.Column('file_size', sa.Integer(), nullable=False),
