@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for Next.js frontend
 
 FROM node:18-alpine AS base
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat curl
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager

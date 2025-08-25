@@ -110,7 +110,13 @@
       "Bash(alembic current:*)",
       "Bash(PYTHONPATH=/mnt/d/PROJECTS/XM-PORT/apps/api python3 -m alembic.config current)",
       "Bash(DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev python3 -c \"\nfrom src.core.database import engine\nimport asyncio\nasync def test_db():\n    try:\n        async with engine.begin() as conn:\n            result = await conn.execute(''SELECT 1'')\n            print(''✅ Database connection successful'')\n    except Exception as e:\n        print(f''❌ Database connection failed: {e}'')\nasyncio.run(test_db())\n\")",
-      "Bash(./venv/Scripts/python:*)"
+      "Bash(./venv/Scripts/python:*)",
+      "Bash(docker compose:*)",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(venv/Scripts/uvicorn.exe:*)",
+      "Bash(DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev venv/Scripts/uvicorn.exe src.main:app --host 0.0.0.0 --port 8000 --reload)",
+      "Bash(./scripts/docker-dev.sh:*)",
+      "Bash(docker:*)"
     ],
     "deny": [],
     "ask": []

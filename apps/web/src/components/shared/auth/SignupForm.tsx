@@ -71,6 +71,20 @@ export function SignupForm({ onSuccess, redirectTo = '/dashboard' }: SignupFormP
       return
     }
 
+    // DEBUG: Log registration data before sending
+    console.log('=== REGISTRATION DEBUG ===')
+    console.log('Form Data:', {
+      email: formData.email,
+      password: formData.password,
+      passwordLength: formData.password.length,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      companyName: formData.companyName || undefined,
+    })
+    console.log('Password validation errors:', passwordErrors)
+    console.log('Password meets requirements:', passwordErrors.length === 0)
+    console.log('TIP: Try passwords like "TestPassword123!" or "SecurePass123!" if validation fails')
+
     const success = await registerUser({
       email: formData.email,
       password: formData.password,

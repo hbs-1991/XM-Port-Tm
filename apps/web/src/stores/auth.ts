@@ -119,22 +119,48 @@ export const useAuthStore = create<AuthState>()(
         
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+          
+          // DEBUG: Log API request details
+          const requestBody = {
+            email: userData.email,
+            password: userData.password,
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            company_name: userData.companyName,
+          }
+          console.log('=== API REQUEST DEBUG ===')
+          console.log('API URL:', `${apiUrl}/api/v1/auth/register`)
+          console.log('Request Body:', requestBody)
+          console.log('Request Headers:', { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+            'Accept': 'application/json'
+          })
+          
           const response = await fetch(`${apiUrl}/api/v1/auth/register`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'ngrok-skip-browser-warning': 'true',
+              'Accept': 'application/json',
             },
-            body: JSON.stringify({
-              email: userData.email,
-              password: userData.password,
-              first_name: userData.firstName,
-              last_name: userData.lastName,
-              company_name: userData.companyName,
-            }),
+            body: JSON.stringify(requestBody),
           })
 
+          // DEBUG: Log response details
+          console.log('=== API RESPONSE DEBUG ===')
+          console.log('Response Status:', response.status)
+          console.log('Response Headers:', Object.fromEntries(response.headers.entries()))
+          
           if (!response.ok) {
             const errorData = await response.json()
+            console.log('Error Response Body:', errorData)
+            console.log('Detailed Error:', {
+              status: response.status,
+              statusText: response.statusText,
+              errorDetail: errorData.detail,
+              fullError: errorData
+            })
             set({ 
               error: errorData.detail || 'Registration failed', 
               isLoading: false 
@@ -142,11 +168,19 @@ export const useAuthStore = create<AuthState>()(
             return false
           }
 
+          const successData = await response.json()
+          console.log('Success Response Body:', successData)
+          console.log('Registration successful! User created:', successData.user)
+
           // Auto-login after successful registration
           const success = await get().login(userData.email, userData.password)
           set({ isLoading: false })
           return success
         } catch (error) {
+          console.log('=== CATCH ERROR DEBUG ===')
+          console.error('Registration network/parsing error:', error)
+          console.log('Error type:', typeof error)
+          console.log('Error message:', error instanceof Error ? error.message : 'Unknown error')
           set({ 
             error: 'Registration failed. Please try again.', 
             isLoading: false 

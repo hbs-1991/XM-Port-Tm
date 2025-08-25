@@ -50,6 +50,8 @@ class AuthService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(credentials),
     })
@@ -67,6 +69,8 @@ class AuthService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(userData),
     })
