@@ -4,28 +4,31 @@
 
 export interface ProcessingJob {
   id: string;
-  userId: string;
+  userId?: string;
   status: ProcessingStatus;
-  inputFileName: string;
-  inputFileUrl: string;
-  inputFileSize: number;
-  outputXmlUrl?: string;
-  creditsUsed: number;
-  processingTimeMs?: number;
-  totalProducts: number;
-  successfulMatches: number;
-  averageConfidence: number;
-  countrySchema: string;
-  errorMessage?: string;
-  createdAt: Date;
-  startedAt?: Date;
-  completedAt?: Date;
+  input_file_name: string;
+  input_file_url?: string;
+  input_file_size: number;
+  output_xml_url?: string;
+  xml_generation_status?: string;
+  credits_used: number;
+  processing_time_ms?: number;
+  total_products: number;
+  successful_matches: number;
+  average_confidence?: number;
+  country_schema: string;
+  error_message?: string;
+  has_xml_output?: boolean;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
 }
 
 export enum ProcessingStatus {
   PENDING = 'PENDING',
   PROCESSING = 'PROCESSING',
   COMPLETED = 'COMPLETED',
+  COMPLETED_WITH_ERRORS = 'COMPLETED_WITH_ERRORS',
   FAILED = 'FAILED',
   CANCELLED = 'CANCELLED'
 }

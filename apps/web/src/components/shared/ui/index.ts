@@ -11,3 +11,10 @@ export { Label } from "./label"
 export { Progress } from "./progress"
 export { Badge } from "./badge"
 export { Alert, AlertDescription, AlertTitle } from "./alert"
+export { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "./ui/select"

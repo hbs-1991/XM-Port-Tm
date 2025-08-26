@@ -163,7 +163,7 @@ export default function DashboardLayout({
                       <div className="text-sm">
                         <span className="text-gray-500">Credits:</span>
                         <Badge variant="outline" className="ml-2">
-                          {user.creditsRemaining.toLocaleString()}
+                          {user.creditsRemaining?.toLocaleString() ?? '0'}
                         </Badge>
                       </div>
                     </div>

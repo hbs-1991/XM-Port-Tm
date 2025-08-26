@@ -106,9 +106,9 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{user?.creditsRemaining.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{user?.creditsRemaining?.toLocaleString() ?? '0'}</div>
             <p className="text-xs text-muted-foreground">
-              {user?.creditsUsedThisMonth.toLocaleString()} used this month
+              {user?.creditsUsedThisMonth?.toLocaleString() ?? '0'} used this month
             </p>
           </CardContent>
         </Card>

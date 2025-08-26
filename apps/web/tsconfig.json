@@ -26,6 +26,9 @@
       "@/*": [
         "./src/*"
       ],
+      "@shared/*": [
+        "../../packages/shared/src/*"
+      ],
       "@xm-port/shared": [
         "../../packages/shared/src"
       ],

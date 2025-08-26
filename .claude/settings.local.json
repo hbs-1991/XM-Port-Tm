@@ -124,7 +124,9 @@
       "Bash(./venv/bin/python:*)",
       "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=\"test_key\" python test_register_debug.py)",
       "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=\"test_key\" python3 test_register_debug.py)",
-      "Bash(PYTHONPATH=/mnt/d/PROJECTS/XM-PORT/apps/api SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=\"test_key\" python3 test_register_debug.py)"
+      "Bash(PYTHONPATH=/mnt/d/PROJECTS/XM-PORT/apps/api SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev OPENAI_API_KEY=\"test_key\" python3 test_register_debug.py)",
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python -m pytest apps/api/tests/unit/test_processing_jobs_api.py -v)",
+      "Bash(SECRET_KEY=\"test_secret_key_that_is_32_chars_long\" JWT_SECRET_KEY=\"test_jwt_secret_key_that_is_32_chars_long\" DATABASE_URL=\"sqlite:///test.db\" DATABASE_URL_ASYNC=\"sqlite+aiosqlite:///test.db\" OPENAI_API_KEY=\"test_key\" python3 -m pytest apps/api/tests/unit/test_processing_jobs_api.py -v)"
     ],
     "deny": [],
     "ask": []

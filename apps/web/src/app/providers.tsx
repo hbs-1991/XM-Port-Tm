@@ -15,7 +15,6 @@ export function Providers({ children }: ProvidersProps) {
         defaultTheme="light"
         enableSystem
         disableTransitionOnChange
-        suppressHydrationWarning
       >
         {children}
       </ThemeProvider>

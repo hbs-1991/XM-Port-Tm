@@ -16,6 +16,7 @@ const customJestConfig = {
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@shared/(.*)$': '<rootDir>/../../packages/shared/src/$1',
     '^@xm-port/shared$': '<rootDir>/../../packages/shared/src',
     '^@xm-port/ui$': '<rootDir>/../../packages/ui/src',
   },

@@ -205,9 +205,153 @@ async def validate_file_only(
 
 
 @router.get("/jobs")
-async def get_processing_jobs(current_user: User = Depends(get_current_active_user)):
-    """Get processing jobs endpoint - requires authentication"""
-    return {"message": "Processing jobs endpoint - to be implemented", "user_id": str(current_user.id)}
+async def get_processing_jobs(
+    page: int = 1,
+    limit: int = 50,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get paginated processing jobs with filtering support
+    
+    - **page**: Page number (default: 1)
+    - **limit**: Jobs per page (default: 50, max: 100)
+    - **search**: Search by file name (optional)
+    - **status**: Filter by processing status (optional)
+    - **date_from**: Filter jobs from date (YYYY-MM-DD format, optional)
+    - **date_to**: Filter jobs to date (YYYY-MM-DD format, optional)
+    """
+    try:
+        from sqlalchemy import and_, or_
+        from src.models.processing_job import ProcessingJob, ProcessingStatus
+        from datetime import datetime
+        
+        # Validate pagination parameters
+        if page < 1:
+            raise HTTPException(status_code=400, detail="Page number must be >= 1")
+        if limit < 1 or limit > 100:
+            raise HTTPException(status_code=400, detail="Limit must be between 1 and 100")
+        
+        # Build query filters
+        filters = [ProcessingJob.user_id == current_user.id]
+        
+        # Search by file name
+        if search and search.strip():
+            filters.append(
+                ProcessingJob.input_file_name.ilike(f"%{search.strip()}%")
+            )
+        
+        # Filter by status
+        if status:
+            try:
+                status_enum = ProcessingStatus(status.upper())
+                filters.append(ProcessingJob.status == status_enum)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Invalid status. Valid values: {[s.value for s in ProcessingStatus]}"
+                )
+        
+        # Date range filters
+        if date_from:
+            try:
+                date_from_parsed = datetime.strptime(date_from, "%Y-%m-%d")
+                filters.append(ProcessingJob.created_at >= date_from_parsed)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="date_from must be in YYYY-MM-DD format"
+                )
+        
+        if date_to:
+            try:
+                date_to_parsed = datetime.strptime(date_to, "%Y-%m-%d")
+                # Add 1 day to include the entire day
+                from datetime import timedelta
+                date_to_parsed += timedelta(days=1)
+                filters.append(ProcessingJob.created_at < date_to_parsed)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="date_to must be in YYYY-MM-DD format"
+                )
+        
+        # Calculate offset
+        offset = (page - 1) * limit
+        
+        # Query with filters, pagination, and ordering
+        query = db.query(ProcessingJob).filter(and_(*filters))
+        
+        # Get total count for pagination metadata
+        total_count = query.count()
+        
+        # Get paginated results ordered by creation date (newest first)
+        jobs = query.order_by(ProcessingJob.created_at.desc()).offset(offset).limit(limit).all()
+        
+        # Format response data
+        jobs_data = []
+        for job in jobs:
+            # Calculate processing duration
+            processing_duration = None
+            if job.started_at and job.completed_at:
+                processing_duration = int((job.completed_at - job.started_at).total_seconds() * 1000)
+            elif job.processing_time_ms:
+                processing_duration = job.processing_time_ms
+            
+            job_data = {
+                "id": str(job.id),
+                "input_file_name": job.input_file_name,
+                "status": job.status.value,
+                "country_schema": job.country_schema,
+                "input_file_size": job.input_file_size,
+                "credits_used": job.credits_used,
+                "total_products": job.total_products,
+                "successful_matches": job.successful_matches,
+                "average_confidence": float(job.average_confidence) if job.average_confidence else None,
+                "processing_time_ms": processing_duration,
+                "has_xml_output": job.output_xml_url is not None,
+                "xml_generation_status": job.xml_generation_status,
+                "error_message": job.error_message,
+                "created_at": job.created_at.isoformat(),
+                "started_at": job.started_at.isoformat() if job.started_at else None,
+                "completed_at": job.completed_at.isoformat() if job.completed_at else None
+            }
+            jobs_data.append(job_data)
+        
+        # Calculate pagination metadata
+        total_pages = (total_count + limit - 1) // limit
+        has_next = page < total_pages
+        has_prev = page > 1
+        
+        return {
+            "jobs": jobs_data,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_next": has_next,
+                "has_prev": has_prev
+            },
+            "filters": {
+                "search": search,
+                "status": status,
+                "date_from": date_from,
+                "date_to": date_to
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving processing jobs: {str(e)}"
+        )
 
 
 @router.get("/jobs/{job_id}/data")
