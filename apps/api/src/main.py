@@ -21,11 +21,16 @@ app = FastAPI(
 # Security middleware
 if settings.is_production:
     app.add_middleware(HTTPSRedirectMiddleware)
-
-app.add_middleware(
-    TrustedHostMiddleware, 
-    allowed_hosts=settings.ALLOWED_HOSTS
-)
+    app.add_middleware(
+        TrustedHostMiddleware, 
+        allowed_hosts=settings.ALLOWED_HOSTS
+    )
+else:
+    # In development, be more permissive with host headers
+    app.add_middleware(
+        TrustedHostMiddleware, 
+        allowed_hosts=["*"]  # Allow all hosts in development
+    )
 
 # CORS middleware with security headers
 app.add_middleware(
