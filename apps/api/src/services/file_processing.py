@@ -7,7 +7,6 @@ import json
 import logging
 import time
 from decimal import Decimal
-from loguru import logger
 import mimetypes
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
@@ -15,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException, UploadFile, logger
 from sqlalchemy.orm import Session
 
 from src.core.config import get_settings
