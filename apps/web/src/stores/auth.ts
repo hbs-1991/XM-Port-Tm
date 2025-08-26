@@ -133,7 +133,6 @@ export const useAuthStore = create<AuthState>()(
           console.log('Request Body:', requestBody)
           console.log('Request Headers:', { 
             'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true',
             'Accept': 'application/json'
           })
           
@@ -141,8 +140,7 @@ export const useAuthStore = create<AuthState>()(
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'ngrok-skip-browser-warning': 'true',
-              'Accept': 'application/json',
+                'Accept': 'application/json',
             },
             body: JSON.stringify(requestBody),
           })

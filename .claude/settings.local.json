@@ -116,7 +116,8 @@
       "Bash(venv/Scripts/uvicorn.exe:*)",
       "Bash(DATABASE_URL=postgresql://postgres:password@localhost:5433/xm_port_dev DATABASE_URL_ASYNC=postgresql+asyncpg://postgres:password@localhost:5433/xm_port_dev venv/Scripts/uvicorn.exe src.main:app --host 0.0.0.0 --port 8000 --reload)",
       "Bash(./scripts/docker-dev.sh:*)",
-      "Bash(docker:*)"
+      "Bash(docker:*)",
+      "Bash(ip route:*)"
     ],
     "deny": [],
     "ask": []

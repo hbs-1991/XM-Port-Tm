@@ -1,14 +1,17 @@
 """
 XM-Port FastAPI Application Entry Point
 """
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+import logging
 
 from src.api.v1 import auth, processing, admin, xml_generation, ws
 from src.core.config import settings
-from src.middleware import setup_rate_limiting
+from src.middleware.security_headers import SecurityHeadersMiddleware
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG if settings.is_development else logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="XM-Port API",
@@ -18,44 +21,26 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-# CORS middleware MUST be added first (before other middleware)
-# In development, use specific origins (cannot use * with credentials)
-if settings.is_development:
-    cors_origins = [
-        "http://localhost:3000",
-        "http://localhost:3001", 
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001"
-    ]
-else:
-    cors_origins = settings.cors_origins_list
-
+# CORS SETUP - Comprehensive headers for cross-origin requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
-    expose_headers=["X-Total-Count", "X-Page-Count"],
-    max_age=3600
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1):(3000|3001)$",    
+    allow_credentials=True,  # Must be False when using "*"
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=[
+        "Content-Type",
+        "Cache-Control",
+        "X-Content-Type-Options",
+        "X-Frame-Options",
+        "X-XSS-Protection"
+    ],
 )
 
-# Security middleware (added AFTER CORS)
-if settings.is_production:
-    app.add_middleware(HTTPSRedirectMiddleware)
-    app.add_middleware(
-        TrustedHostMiddleware, 
-        allowed_hosts=settings.ALLOWED_HOSTS
-    )
-else:
-    # In development, be more permissive with host headers
-    app.add_middleware(
-        TrustedHostMiddleware, 
-        allowed_hosts=["*"]  # Allow all hosts in development
-    )
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
 
-# Setup rate limiting
-setup_rate_limiting(app)
+logger.info("CORS and security headers middleware applied")
 
 # API routes
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
@@ -75,20 +60,6 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "xm-port-api"}
-
-
-@app.options("/api/v1/auth/register")
-async def handle_register_preflight():
-    """Explicit OPTIONS handler for register endpoint"""
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "http://localhost:3001",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Accept, ngrok-skip-browser-warning",
-            "Access-Control-Allow-Credentials": "true",
-        }
-    )
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """Authentication schemas for request/response validation."""
 
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserRegisterRequest(BaseModel):
@@ -12,7 +12,8 @@ class UserRegisterRequest(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=50, description="User's last name")
     company_name: Optional[str] = Field(None, max_length=100, description="Company name")
     
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password(cls, v):
         """Validate password complexity."""
         if len(v) < 8:
@@ -61,7 +62,8 @@ class PasswordResetConfirm(BaseModel):
     token: str = Field(..., description="Password reset token")
     new_password: str = Field(..., min_length=8, max_length=128, description="New password")
     
-    @validator('new_password')
+    @field_validator('new_password')
+    @classmethod
     def validate_password(cls, v):
         """Validate password complexity."""
         if len(v) < 8:
@@ -91,8 +93,7 @@ class UserResponse(BaseModel):
     company_name: Optional[str] = Field(None, description="Company name")
     is_active: bool = Field(..., description="User's active status")
     
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class AuthResponse(BaseModel):

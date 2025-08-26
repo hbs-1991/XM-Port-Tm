@@ -2,7 +2,7 @@
 Authentication API endpoints
 """
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import HTTPBearer
 from sqlalchemy.exc import IntegrityError
 
@@ -32,12 +32,23 @@ user_repository = UserRepository()
 
 @router.options("/register")
 async def register_options():
-    """Handle OPTIONS request for CORS preflight"""
-    return Response(status_code=status.HTTP_200_OK)
+    """Handle preflight requests for registration endpoint"""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "86400",
+            "Cache-Control": "public, max-age=86400",
+            "X-Content-Type-Options": "nosniff"
+        }
+    )
+
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserRegisterRequest):
+async def register(user_data: UserRegisterRequest, response: Response):
     """
     User registration endpoint with email/password validation.
     
@@ -55,7 +66,7 @@ async def register(user_data: UserRegisterRequest):
         existing_user = await user_repository.get_by_email(user_data.email)
         if existing_user:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Email already registered"
             )
         
@@ -81,8 +92,14 @@ async def register(user_data: UserRegisterRequest):
         # Store refresh token in Redis
         await session_service.store_refresh_token(str(created_user.id), refresh_token)
         
+        # Add security headers to response
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        
         return AuthResponse(
-            user=UserResponse.from_orm(created_user),
+            user=UserResponse.model_validate(created_user),
             tokens=TokenResponse(
                 access_token=access_token,
                 refresh_token=refresh_token,
@@ -136,7 +153,7 @@ async def login(credentials: UserLoginRequest):
     await user_repository.update_last_login(user.id)
     
     return AuthResponse(
-        user=UserResponse.from_orm(user),
+        user=UserResponse.model_validate(user),
         tokens=TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,

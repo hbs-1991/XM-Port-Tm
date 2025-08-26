@@ -75,7 +75,7 @@ const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'strict',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // Always use secure cookies
         maxAge: 15 * 60, // 15 minutes
       }
     },
@@ -85,7 +85,7 @@ const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'strict',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // Always use secure cookies
       }
     },
     csrfToken: {
@@ -94,7 +94,7 @@ const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'strict',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // Always use secure cookies
       }
     }
   },
