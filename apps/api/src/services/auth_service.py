@@ -212,7 +212,7 @@ class AuthService:
         access_token = self.create_access_token(
             user_id=str(user.id),
             email=user.email,
-            role=user.role
+            role=user.role.value if hasattr(user.role, 'value') else str(user.role)
         )
         refresh_token = self.create_refresh_token(user_id=str(user.id))
         

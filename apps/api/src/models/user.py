@@ -40,6 +40,7 @@ class User(Base):
     company_name = Column(String(100), nullable=True)
     country = Column(String(3), nullable=False)
     created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=False), default=func.now(), onupdate=func.now(), nullable=False)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     

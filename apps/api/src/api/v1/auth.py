@@ -64,11 +64,14 @@ async def register(user_data: UserRegisterRequest, response: Response):
     try:
         # Check if user already exists
         existing_user = await user_repository.get_by_email(user_data.email)
+        print(f"DEBUG: get_by_email({user_data.email}) returned: {existing_user}")
         if existing_user:
+            print(f"DEBUG: User exists! ID: {existing_user.id}, Email: {existing_user.email}")
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Email already registered"
             )
+        print(f"DEBUG: No existing user found, proceeding with creation...")
         
         # Hash password and create user
         hashed_password = auth_service.hash_password(user_data.password)
@@ -89,8 +92,13 @@ async def register(user_data: UserRegisterRequest, response: Response):
         # Generate tokens
         access_token, refresh_token = auth_service.generate_token_pair(created_user)
         
-        # Store refresh token in Redis
-        await session_service.store_refresh_token(str(created_user.id), refresh_token)
+        # Store refresh token in Redis (with error handling to prevent transaction rollback)
+        try:
+            await session_service.store_refresh_token(str(created_user.id), refresh_token)
+        except Exception as redis_error:
+            # Log Redis error but don't fail registration - user is already created
+            print(f"Redis error during registration: {redis_error}")
+            # Continue with response - refresh token can be regenerated later
         
         # Add security headers to response
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -107,10 +115,23 @@ async def register(user_data: UserRegisterRequest, response: Response):
             )
         )
         
-    except IntegrityError:
+    except IntegrityError as ie:
+        print(f"DEBUG: IntegrityError caught: {ie}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
+        )
+    except HTTPException as he:
+        print(f"DEBUG: HTTPException caught: {he.status_code} - {he.detail}")
+        raise he
+    except Exception as e:
+        # Log any unexpected errors for debugging
+        print(f"DEBUG: Unexpected error during registration: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Registration failed due to server error"
         )
 
 

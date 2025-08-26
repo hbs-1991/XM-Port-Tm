@@ -37,7 +37,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
         try:
             yield session
-            await session.commit()
+            # Don't auto-commit - let the caller decide
+            # This prevents issues with read-only operations
         except Exception:
             await session.rollback()
             raise

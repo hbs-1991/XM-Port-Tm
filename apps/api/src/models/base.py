@@ -1,16 +1,12 @@
 """
 Base database model and common utilities
 """
-from sqlalchemy import create_engine, Column, Integer, DateTime, func
+from sqlalchemy import Column, Integer, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 from ..core.config import settings
 
-# Create SQLAlchemy engine
-engine = create_engine(settings.DATABASE_URL)
-
-# Create sessionmaker
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# NOTE: We use async engine from database.py, not a sync engine here
+# This prevents dual-engine conflicts and confusing logs
 
 # Create base class
 Base = declarative_base()

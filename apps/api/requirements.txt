@@ -63,3 +63,12 @@ botocore
 
 # Chardet
 chardet
+
+# PostgreSQL Client
+postgresql-client
+
+# CORS
+fastapi-cors
+
+# Swagger
+fastapi-swagger

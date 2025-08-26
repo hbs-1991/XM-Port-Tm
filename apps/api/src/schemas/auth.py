@@ -1,7 +1,8 @@
 """Authentication schemas for request/response validation."""
 
-from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import Optional, Any
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_serializer
+from uuid import UUID
 
 
 class UserRegisterRequest(BaseModel):
@@ -85,13 +86,26 @@ class PasswordResetConfirm(BaseModel):
 
 class UserResponse(BaseModel):
     """Schema for user data response."""
-    id: str = Field(..., description="User's unique identifier")
+    id: Any = Field(..., description="User's unique identifier")
     email: str = Field(..., description="User's email address")
     first_name: str = Field(..., description="User's first name")
     last_name: str = Field(..., description="User's last name")
-    role: str = Field(..., description="User's role")
+    role: Any = Field(..., description="User's role")
     company_name: Optional[str] = Field(None, description="Company name")
     is_active: bool = Field(..., description="User's active status")
+    
+    @model_serializer
+    def serialize_model(self) -> dict[str, Any]:
+        """Custom serialization to handle UUID and enum conversion."""
+        return {
+            'id': str(self.id) if hasattr(self.id, '__str__') else self.id,
+            'email': self.email,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'role': self.role.value if hasattr(self.role, 'value') else str(self.role),
+            'company_name': self.company_name,
+            'is_active': self.is_active
+        }
     
     model_config = {"from_attributes": True}
 

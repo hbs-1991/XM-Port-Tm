@@ -58,7 +58,7 @@ class UserRepository:
         """
         async with get_db() as session:
             session.add(user)
-            await session.commit()
+            await session.commit()  # Explicit commit for write operation
             await session.refresh(user)
             return user
     
