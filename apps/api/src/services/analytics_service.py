@@ -48,6 +48,9 @@ class UsageAnalytics:
     total_users: int = 0
     active_users_today: int = 0
     active_users_week: int = 0
+    total_downloads: int = 0
+    downloads_today: int = 0
+    downloads_this_week: int = 0
     total_processing_jobs: int = 0
     jobs_completed_today: int = 0
     average_products_per_job: float = 0.0
@@ -600,6 +603,63 @@ class HSCodeAnalyticsService:
                 
         except Exception as e:
             logger.warning(f"Failed to persist analytics to cache: {str(e)}")
+    
+    async def record_download_activity(
+        self, 
+        job_id: str, 
+        user_id: str, 
+        file_name: str,
+        download_success: bool = True,
+        error_message: Optional[str] = None
+    ) -> None:
+        """
+        Record file download activity for analytics tracking
+        
+        Args:
+            job_id: Processing job ID
+            user_id: User ID who initiated download
+            file_name: Name of downloaded file
+            download_success: Whether download was successful
+            error_message: Error message if download failed
+        """
+        try:
+            download_record = {
+                "job_id": job_id,
+                "user_id": user_id,
+                "file_name": file_name,
+                "download_success": download_success,
+                "error_message": error_message,
+                "timestamp": datetime.utcnow().isoformat(),
+                "download_time_ms": int(time.time() * 1000)
+            }
+            
+            logger.info(f"Download activity recorded - Job: {job_id}, User: {user_id}, Success: {download_success}")
+            
+            # Store in cache for analytics
+            cache_service = await self._get_cache_service()
+            if cache_service:
+                cache_key = f"analytics:download:{job_id}:{int(time.time())}"
+                await cache_service.set_with_expiry(
+                    key=cache_key,
+                    value=json.dumps(download_record),
+                    ttl_seconds=86400  # 24 hours
+                )
+                
+                # Update daily download counters
+                today = datetime.utcnow().strftime("%Y-%m-%d")
+                download_counter_key = f"analytics:downloads:daily:{today}"
+                
+                if await cache_service.exists(download_counter_key):
+                    await cache_service.increment(download_counter_key)
+                else:
+                    await cache_service.set_with_expiry(
+                        key=download_counter_key,
+                        value="1",
+                        ttl_seconds=86400
+                    )
+                
+        except Exception as e:
+            logger.warning(f"Failed to record download activity: {str(e)}")
     
     async def get_system_health_metrics(self) -> Dict[str, Any]:
         """Get comprehensive system health metrics"""

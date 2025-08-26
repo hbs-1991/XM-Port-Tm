@@ -187,27 +187,59 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
 
   const handleDownload = async (jobId: string, fileName: string) => {
     try {
-      const response = await fetch(`/api/proxy/xml-generation/${jobId}/download`, {
+      // First get the download information
+      const downloadInfoResponse = await fetch(`/api/proxy/processing/${jobId}/xml-download`, {
         credentials: 'include'
       })
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to download file')
+      if (!downloadInfoResponse.ok) {
+        const errorData = await downloadInfoResponse.json()
+        
+        // Handle specific error cases
+        if (errorData.detail?.error === 'xml_not_available') {
+          throw new Error('XML file is not available for download. The processing may still be in progress.')
+        } else if (errorData.detail?.error === 'job_not_found') {
+          throw new Error('Processing job not found or you do not have access to this file.')
+        } else if (errorData.detail?.error === 'download_url_generation_failed') {
+          throw new Error('The download link has expired. Please try again.')
+        } else {
+          throw new Error(errorData.detail?.message || 'Failed to get download information')
+        }
       }
       
-      const blob = await response.blob()
+      const downloadInfo = await downloadInfoResponse.json()
+      
+      // Download the file using the provided URL
+      const fileResponse = await fetch(downloadInfo.download_url)
+      
+      if (!fileResponse.ok) {
+        throw new Error('Failed to download file from storage. The file may have been moved or deleted.')
+      }
+      
+      const blob = await fileResponse.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${fileName}_processed.xml`
+      a.download = downloadInfo.file_name || `${fileName}_processed.xml`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
+      
+      // Show success message
+      console.log(`Successfully downloaded: ${downloadInfo.file_name}`)
+      
     } catch (err) {
       console.error('Download error:', err)
-      alert(err instanceof Error ? err.message : 'Failed to download file')
+      
+      // Show user-friendly error messages
+      let errorMessage = 'Failed to download file'
+      if (err instanceof Error) {
+        errorMessage = err.message
+      }
+      
+      // You could replace this with a toast notification in the future
+      alert(errorMessage)
     }
   }
 

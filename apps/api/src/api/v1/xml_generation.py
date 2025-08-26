@@ -12,6 +12,7 @@ from src.models.user import User
 from src.models.processing_job import ProcessingJob, ProcessingStatus
 from src.models.product_match import ProductMatch
 from src.services.xml_generation import XMLGenerationService, XMLGenerationError, XMLValidationError, CountrySchema
+from src.services.analytics_service import HSCodeAnalyticsService
 from src.schemas.xml_generation import (
     XMLGenerationRequest,
     XMLGenerationResponse,
@@ -288,9 +289,10 @@ async def get_xml_download(
                 }
             )
         
-        # Initialize XML generation service for download URL generation
+        # Initialize services
         xml_service = XMLGenerationService()
         storage_service = xml_service._get_storage_service()
+        analytics_service = HSCodeAnalyticsService()
         
         # Generate fresh download URL (in case the stored one is expired)
         try:
@@ -302,7 +304,25 @@ async def get_xml_download(
             else:
                 # For direct URLs, use as-is (local development)
                 download_url = processing_job.output_xml_url
+                
+            # Record successful download activity
+            await analytics_service.record_download_activity(
+                job_id=str(job_id),
+                user_id=str(current_user.id),
+                file_name=f"asycuda_export_{job_id}.xml",
+                download_success=True
+            )
+            
         except Exception as e:
+            # Record failed download activity
+            await analytics_service.record_download_activity(
+                job_id=str(job_id),
+                user_id=str(current_user.id),
+                file_name=f"asycuda_export_{job_id}.xml",
+                download_success=False,
+                error_message=str(e)
+            )
+            
             raise HTTPException(
                 status_code=400,
                 detail={
