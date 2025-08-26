@@ -19,6 +19,7 @@ export interface UpdateDataResponse {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const USE_PROXY = true; // Enable proxy to avoid CORS issues with WSL
 
 class DataEditingService {
   private async fetchWithAuth(url: string, options: RequestInit = {}) {
@@ -29,7 +30,8 @@ class DataEditingService {
       // 'Authorization': `Bearer ${token}`,
     };
 
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const baseUrl = USE_PROXY ? '/api/proxy' : API_BASE_URL;
+    const response = await fetch(`${baseUrl}${url}`, {
       ...options,
       headers,
     });

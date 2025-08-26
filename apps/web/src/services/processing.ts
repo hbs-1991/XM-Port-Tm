@@ -20,6 +20,7 @@ interface UploadResponse extends ProcessingJob {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const USE_PROXY = true; // Enable proxy to avoid CORS issues with WSL
 
 class ProcessingService {
   private async fetchWithAuth(url: string, options: RequestInit = {}) {
@@ -29,7 +30,8 @@ class ProcessingService {
       // 'Authorization': `Bearer ${token}`,
     };
 
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const baseUrl = USE_PROXY ? '/api/proxy' : API_BASE_URL;
+    const response = await fetch(`${baseUrl}${url}`, {
       ...options,
       headers,
     });
@@ -90,7 +92,8 @@ class ProcessingService {
       });
 
       xhr.timeout = 300000; // 5 minutes timeout
-      xhr.open('POST', `${API_BASE_URL}/api/v1/processing/upload`);
+      const baseUrl = USE_PROXY ? '/api/proxy' : API_BASE_URL;
+      xhr.open('POST', `${baseUrl}/api/v1/processing/upload`);
       
       // TODO: Add auth header when implemented
       // xhr.setRequestHeader('Authorization', `Bearer ${token}`);
