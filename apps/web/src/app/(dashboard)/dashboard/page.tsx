@@ -83,12 +83,12 @@ export default function DashboardPage() {
             if (errorText) {
               errorMessage += ` - ${errorText}`
             }
-            console.error('Statistics API Error:', {
+            console.error('Statistics API Error:', JSON.stringify({
               status: response.status,
               statusText: response.statusText,
               body: errorText,
               url: response.url
-            })
+            }, null, 2))
           } catch (parseError) {
             console.error('Failed to parse error response:', parseError)
           }
@@ -97,12 +97,12 @@ export default function DashboardPage() {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load statistics'
         setError(errorMessage)
-        console.error('Error fetching statistics:', {
-          error: err,
+        console.error('Error fetching statistics:', JSON.stringify({
+          error: err instanceof Error ? err.message : String(err),
           message: errorMessage,
           user: user?.email,
           hasToken: !!user?.accessToken
-        })
+        }, null, 2))
         // Use fallback data for development
         setStatistics({
           totalJobs: 127,

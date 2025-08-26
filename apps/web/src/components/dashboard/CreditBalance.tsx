@@ -28,12 +28,13 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/shared/ui/alert'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/shared/ui/ui/tooltip'
+// TODO: Add tooltip component when available
+// import {
+//   Tooltip,
+//   TooltipContent,
+//   TooltipProvider,
+//   TooltipTrigger,
+// } from '@/components/shared/ui/tooltip'
 import type { CreditBalance as CreditBalanceType } from '@shared/types'
 
 interface CreditBalanceProps {
@@ -100,7 +101,8 @@ export function CreditBalance({
   const isVeryLowBalance = displayBalance.remaining < 25
   const usagePercentage = Math.min(displayBalance.percentageUsed, 100)
 
-  const getTierColor = (tier: string) => {
+  const getTierColor = (tier: string | undefined) => {
+    if (!tier) return 'bg-gray-100 text-gray-800 border-gray-200'
     switch (tier.toUpperCase()) {
       case 'FREE':
         return 'bg-gray-100 text-gray-800 border-gray-200'
@@ -115,7 +117,8 @@ export function CreditBalance({
     }
   }
 
-  const getTierLabel = (tier: string) => {
+  const getTierLabel = (tier: string | undefined) => {
+    if (!tier) return 'Unknown'
     return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase()
   }
 
@@ -126,16 +129,9 @@ export function CreditBalance({
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
             Credit Balance
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Credits are used to process your files and match HS codes</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div className="relative" title="Credits are used to process your files and match HS codes">
+              <Info className="h-4 w-4 text-gray-400 cursor-help" />
+            </div>
           </CardTitle>
           <CardDescription>
             Current balance and monthly usage for your {getTierLabel(displayBalance.subscriptionTier)} plan
@@ -163,7 +159,6 @@ export function CreditBalance({
             <Progress 
               value={usagePercentage} 
               className="h-2"
-              color={usagePercentage > 80 ? 'bg-red-500' : usagePercentage > 60 ? 'bg-yellow-500' : 'bg-green-500'}
             />
             <div className="text-xs text-gray-500 text-center">
               {usagePercentage.toFixed(1)}% used this month
