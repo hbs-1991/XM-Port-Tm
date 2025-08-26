@@ -41,9 +41,10 @@ interface TokenResponse {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const USE_PROXY = true; // Enable proxy to avoid CORS issues
 
 class AuthService {
-  private baseUrl = `${API_BASE_URL}/api/v1/auth`
+  private baseUrl = USE_PROXY ? '/api/proxy/api/v1/auth' : `${API_BASE_URL}/api/v1/auth`
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await fetch(`${this.baseUrl}/login`, {

@@ -1,7 +1,7 @@
 """
 XM-Port FastAPI Application Entry Point
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -18,7 +18,29 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-# Security middleware
+# CORS middleware MUST be added first (before other middleware)
+# In development, use specific origins (cannot use * with credentials)
+if settings.is_development:
+    cors_origins = [
+        "http://localhost:3000",
+        "http://localhost:3001", 
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001"
+    ]
+else:
+    cors_origins = settings.cors_origins_list
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["X-Total-Count", "X-Page-Count"],
+    max_age=3600
+)
+
+# Security middleware (added AFTER CORS)
 if settings.is_production:
     app.add_middleware(HTTPSRedirectMiddleware)
     app.add_middleware(
@@ -31,25 +53,6 @@ else:
         TrustedHostMiddleware, 
         allowed_hosts=["*"]  # Allow all hosts in development
     )
-
-# CORS middleware with security headers
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=[
-        "Authorization",
-        "Content-Type",
-        "X-Requested-With",
-        "Accept",
-        "Origin",
-        "User-Agent",
-        "X-CSRFToken"
-    ],
-    expose_headers=["X-Total-Count", "X-Page-Count"],
-    max_age=3600
-)
 
 # Setup rate limiting
 setup_rate_limiting(app)
@@ -72,6 +75,20 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "xm-port-api"}
+
+
+@app.options("/api/v1/auth/register")
+async def handle_register_preflight():
+    """Explicit OPTIONS handler for register endpoint"""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "http://localhost:3001",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Accept, ngrok-skip-browser-warning",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 
 if __name__ == "__main__":

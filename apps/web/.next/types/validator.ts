@@ -101,6 +101,12 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   handler satisfies RouteHandlerConfig<"/api/auth/[...nextauth]">
 }
 
+// Validate ../../src/app/api/proxy/[...path]/route.ts
+{
+  const handler = {} as typeof import("../../src/app/api/proxy/[...path]/route.js")
+  handler satisfies RouteHandlerConfig<"/api/proxy/[...path]">
+}
+
 
 
 

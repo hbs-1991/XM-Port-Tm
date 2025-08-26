@@ -30,6 +30,12 @@ session_service = SessionService()
 user_repository = UserRepository()
 
 
+@router.options("/register")
+async def register_options():
+    """Handle OPTIONS request for CORS preflight"""
+    return Response(status_code=status.HTTP_200_OK)
+
+
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserRegisterRequest):
     """

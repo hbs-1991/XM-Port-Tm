@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CORS Test</title>
+</head>
+<body>
+    <h1>CORS Test for XM-Port API</h1>
+    <button onclick="testHealth()">Test Health Endpoint</button>
+    <button onclick="testRegister()">Test Register Endpoint</button>
+    <div id="result"></div>
+
+    <script>
+        async function testHealth() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing health endpoint...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/health', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<pre>Health Check Success:\n${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `Health Check Failed: ${response.status}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `Health Check Error: ${error.message}`;
+            }
+        }
+
+        async function testRegister() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing register endpoint...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'TestPass123!',
+                        first_name: 'Test',
+                        last_name: 'User',
+                        company_name: 'Test Co'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<pre>Register Success:\n${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    const error = await response.json();
+                    resultDiv.innerHTML = `<pre>Register Failed:\n${JSON.stringify(error, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `Register Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

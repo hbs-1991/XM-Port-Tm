@@ -12,9 +12,10 @@ export function Providers({ children }: ProvidersProps) {
     <SessionProvider>
       <ThemeProvider
         attribute="class"
-        defaultTheme="system"
+        defaultTheme="light"
         enableSystem
         disableTransitionOnChange
+        suppressHydrationWarning
       >
         {children}
       </ThemeProvider>

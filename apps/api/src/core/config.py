@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days
     ALLOWED_HOSTS: Union[str, List[str]] = ["localhost", "127.0.0.1", "localhost:8000", "127.0.0.1:8000", "*"]
-    CORS_ORIGINS: Union[str, List[str]] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: Union[str, List[str]] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"]
     
     # Database settings
     DATABASE_URL: str
