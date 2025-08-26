@@ -11,6 +11,8 @@ async function handleRequest(
   const path = resolvedParams.path.join('/');
   const url = `${API_BASE_URL}/${path}`;
   
+  console.log(`[Proxy] ${method} ${url}`);
+  
   try {
     const headers = new Headers();
     
@@ -42,6 +44,8 @@ async function handleRequest(
       body: body instanceof FormData ? body : body,
     });
     
+    console.log(`[Proxy Response] ${method} ${url}: ${response.status} ${response.statusText}`);
+    
     // Handle different response types
     const responseContentType = response.headers.get('content-type');
     if (responseContentType?.includes('application/json')) {
@@ -71,9 +75,9 @@ async function handleRequest(
       });
     }
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error(`[Proxy Error] ${method} ${url}:`, error);
     return NextResponse.json(
-      { error: 'Internal proxy error', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Internal proxy error', details: error instanceof Error ? error.message : String(error), url },
       { status: 500 }
     );
   }

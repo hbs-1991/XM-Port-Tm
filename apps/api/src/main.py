@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
-from src.api.v1 import auth, processing, admin, xml_generation, ws
+from src.api.v1 import auth, processing, admin, users, xml_generation, ws
 from src.core.config import settings
 from src.middleware.security_headers import SecurityHeadersMiddleware
 
@@ -45,6 +45,7 @@ logger.info("CORS and security headers middleware applied")
 # API routes
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(processing.router, prefix="/api/v1/processing", tags=["processing"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(xml_generation.router, prefix="/api/v1", tags=["xml-generation"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(ws.router, prefix="/api/v1/ws", tags=["websocket"])

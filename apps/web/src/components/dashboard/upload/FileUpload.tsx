@@ -10,7 +10,7 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Alert, AlertDescription } from '@/components/shared/ui/alert';
 import { Upload, FileText, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { uploadFile } from '@/services/processing';
-import { ProcessingJob, ProcessingStatus } from '@xm-port/shared/types';
+import { ProcessingJob, ProcessingStatus } from '@shared/types';
 import { FilePreview } from './FilePreview';
 import { UploadProgress } from './UploadProgress';
 import { UploadValidation } from './UploadValidation';
@@ -54,11 +54,17 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
       setUploadedFiles(prev => 
         prev.map(f => 
           f.id === fileId 
-            ? { ...f, status: 'completed', progress: 100, job: data, previewData: data.previewData }
+            ? { 
+                ...f, 
+                status: 'completed' as const, 
+                progress: 100, 
+                job: data as ProcessingJob, 
+                previewData: data.previewData 
+              }
             : f
         )
       );
-      onUploadComplete?.(data);
+      onUploadComplete?.(data as ProcessingJob);
     },
     onError: (error: any, variables) => {
       const fileId = variables.fileId;

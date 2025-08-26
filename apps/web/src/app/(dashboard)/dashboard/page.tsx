@@ -3,10 +3,14 @@
  */
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shared/ui/card'
 import { Button } from '@/components/shared/ui/button'
 import { Badge } from '@/components/shared/ui/badge'
+import CreditBalance from '@/components/dashboard/CreditBalance'
+import UsageMetrics from '@/components/dashboard/UsageMetrics'
+import AnalyticsCharts from '@/components/dashboard/AnalyticsCharts'
 import {
   Upload,
   FileText,
@@ -16,22 +20,16 @@ import {
   XCircle,
   AlertCircle,
   ArrowRight,
+  BarChart3,
 } from 'lucide-react'
 import Link from 'next/link'
+import type { UserStatistics } from '@shared/types'
 
 export default function DashboardPage() {
   const { user } = useAuth()
-
-  // Placeholder statistics - will be replaced with real data
-  const stats = {
-    totalJobs: 127,
-    successRate: 98.5,
-    averageConfidence: 94.2,
-    processingToday: 12,
-    pendingJobs: 3,
-    completedJobs: 124,
-    failedJobs: 0,
-  }
+  const [statistics, setStatistics] = useState<UserStatistics | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const recentJobs = [
     {
@@ -59,6 +57,89 @@ export default function DashboardPage() {
       confidence: 93.8,
     },
   ]
+
+  // Fetch user statistics
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      if (!user) return
+      
+      try {
+        console.log('Fetching statistics for user:', user.email)
+        
+        const response = await fetch('/api/proxy/api/v1/users/statistics', {
+          headers: {
+            'Authorization': `Bearer ${user.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setStatistics(data)
+        } else {
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+          try {
+            const errorText = await response.text()
+            if (errorText) {
+              errorMessage += ` - ${errorText}`
+            }
+            console.error('Statistics API Error:', {
+              status: response.status,
+              statusText: response.statusText,
+              body: errorText,
+              url: response.url
+            })
+          } catch (parseError) {
+            console.error('Failed to parse error response:', parseError)
+          }
+          throw new Error(`Failed to fetch statistics: ${errorMessage}`)
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load statistics'
+        setError(errorMessage)
+        console.error('Error fetching statistics:', {
+          error: err,
+          message: errorMessage,
+          user: user?.email,
+          hasToken: !!user?.accessToken
+        })
+        // Use fallback data for development
+        setStatistics({
+          totalJobs: 127,
+          successRate: 98.5,
+          averageConfidence: 94.2,
+          monthlyUsage: {
+            creditsUsed: 450,
+            jobsCompleted: 28,
+            filesProcessed: 28,
+            averageProcessingTime: 4200,
+            month: 'August',
+            year: 2025
+          },
+          creditBalance: {
+            remaining: user?.creditsRemaining || 2550,
+            total: (user?.creditsRemaining || 2550) + (user?.creditsUsedThisMonth || 450),
+            usedThisMonth: user?.creditsUsedThisMonth || 450,
+            percentageUsed: user ? (user.creditsUsedThisMonth / (user.creditsRemaining + user.creditsUsedThisMonth)) * 100 : 15,
+            subscriptionTier: user?.subscriptionTier || 'BASIC'
+          },
+          processingStats: {
+            totalJobs: 127,
+            completedJobs: 124,
+            failedJobs: 3,
+            successRate: 98.5,
+            totalProducts: 3420,
+            successfulMatches: 3368,
+            averageConfidence: 94.2
+          }
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStatistics()
+  }, [user])
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -94,80 +175,70 @@ export default function DashboardPage() {
           Welcome back, {user?.firstName}!
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Here's an overview of your processing activity
+          Here's an overview of your processing activity and account statistics
         </p>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Credit Balance and Upload Section */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <CreditBalance 
+            creditBalance={statistics?.creditBalance}
+            loading={loading}
+          />
+        </div>
+        
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Credits Remaining</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Quick Upload
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{user?.creditsRemaining?.toLocaleString() ?? '0'}</div>
-            <p className="text-xs text-muted-foreground">
-              {user?.creditsUsedThisMonth?.toLocaleString() ?? '0'} used this month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalJobs}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.processingToday} processed today
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.successRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.completedJobs} completed successfully
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Confidence</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.averageConfidence}%</div>
-            <p className="text-xs text-muted-foreground">AI matching accuracy</p>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Start processing your customs declaration files with AI-powered HS code matching
+              </p>
+              <Button asChild className="w-full">
+                <Link href="/dashboard/upload">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Files
+                </Link>
+              </Button>
+              <Button variant="outline" asChild className="w-full">
+                <Link href="/dashboard/history">
+                  <FileText className="mr-2 h-4 w-4" />
+                  View History
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Upload Section */}
+      {/* Usage Metrics */}
+      <UsageMetrics 
+        statistics={statistics || undefined} 
+        loading={loading}
+      />
+
+      {/* Analytics Charts */}
       <Card>
         <CardHeader>
-          <CardTitle>Quick Upload</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Analytics Dashboard
+          </CardTitle>
+          <CardDescription>
+            Interactive data visualization of your processing performance and trends
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Start processing your customs declaration files
-            </p>
-            <Button asChild>
-              <Link href="/dashboard/upload">
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Files
-              </Link>
-            </Button>
-          </div>
+          <AnalyticsCharts 
+            statistics={statistics || undefined}
+            loading={loading}
+          />
         </CardContent>
       </Card>
 
@@ -187,7 +258,7 @@ export default function DashboardPage() {
             {recentJobs.map((job) => (
               <div
                 key={job.id}
-                className="flex items-center justify-between rounded-lg border p-4"
+                className="flex items-center justify-between rounded-lg border p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center space-x-4">
                   {getStatusIcon(job.status)}
@@ -210,44 +281,38 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
+          
+          {recentJobs.length === 0 && (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No processing jobs yet</p>
+              <p className="text-sm text-gray-400 mb-4">
+                Upload your first file to get started
+              </p>
+              <Button asChild>
+                <Link href="/dashboard/upload">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Files
+                </Link>
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Processing Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingJobs}</div>
-            <p className="text-xs text-muted-foreground">Jobs in queue</p>
+      {/* Error Display */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2 text-red-600">
+              <AlertCircle className="h-4 w-4" />
+              <p className="text-sm">
+                {error} - Using demo data for display
+              </p>
+            </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completedJobs}</div>
-            <p className="text-xs text-muted-foreground">Successfully processed</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Failed</CardTitle>
-            <XCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.failedJobs}</div>
-            <p className="text-xs text-muted-foreground">Need attention</p>
-          </CardContent>
-        </Card>
-      </div>
+      )}
     </div>
   )
 }
