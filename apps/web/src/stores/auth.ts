@@ -6,6 +6,7 @@ import { devtools } from 'zustand/middleware'
 import { signIn, signOut, getSession } from 'next-auth/react'
 import type { Session } from 'next-auth'
 import type { User } from '@xm-port/shared'
+import { authService } from '@/services/auth'
 
 interface AuthState {
   user: User | null
@@ -17,6 +18,7 @@ interface AuthState {
   // Actions
   login: (email: string, password: string) => Promise<boolean>
   logout: () => Promise<void>
+  logoutAll: () => Promise<void>
   refreshSession: () => Promise<void>
   register: (userData: RegisterData) => Promise<boolean>
   clearError: () => void
@@ -69,10 +71,28 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        set({ isLoading: true })
+        set({ isLoading: true, error: null })
         
         try {
+          const currentSession = get().session
+          
+          // Call backend logout API if we have a valid session with tokens
+          if (currentSession?.accessToken) {
+            try {
+              await authService.logout(
+                currentSession.accessToken,
+                currentSession.refreshToken
+              )
+            } catch (apiError) {
+              // Log API error but don't fail the logout - we'll still clear client-side state
+              console.warn('Backend logout failed, proceeding with client-side cleanup:', apiError)
+            }
+          }
+
+          // Clear NextAuth session (this also triggers the signOut event we configured)
           await signOut({ redirect: false })
+          
+          // Clear all client-side state
           set({ 
             user: null,
             session: null,
@@ -81,9 +101,53 @@ export const useAuthStore = create<AuthState>()(
             error: null
           })
         } catch (error) {
+          console.error('Logout error:', error)
+          // Even if logout fails, clear the client state
           set({ 
-            error: 'Logout failed', 
-            isLoading: false 
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: 'Logout failed, but session cleared'
+          })
+        }
+      },
+
+      logoutAll: async () => {
+        set({ isLoading: true, error: null })
+        
+        try {
+          const currentSession = get().session
+          
+          // Call backend logout-all API if we have a valid session
+          if (currentSession?.accessToken) {
+            try {
+              await authService.logoutAll(currentSession.accessToken)
+            } catch (apiError) {
+              console.warn('Backend logout all failed, proceeding with client-side cleanup:', apiError)
+            }
+          }
+
+          // Clear NextAuth session and all client-side state
+          await signOut({ redirect: false })
+          
+          // Clear all client-side state
+          set({ 
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null
+          })
+        } catch (error) {
+          console.error('Logout all error:', error)
+          // Even if logout fails, clear the client state
+          set({ 
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: 'Logout from all devices failed, but session cleared'
           })
         }
       },

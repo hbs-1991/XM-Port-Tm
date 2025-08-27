@@ -90,3 +90,21 @@ class UserRepository:
             if user:
                 user.last_login_at = datetime.now(timezone.utc)
                 await session.commit()
+    
+    async def delete(self, user_id: UUID) -> bool:
+        """
+        Delete a user from the database.
+        
+        Args:
+            user_id: UUID of the user to delete
+            
+        Returns:
+            True if user was deleted, False if user was not found
+        """
+        async with get_db() as session:
+            user = await session.get(User, user_id)
+            if user:
+                await session.delete(user)
+                await session.commit()
+                return True
+            return False

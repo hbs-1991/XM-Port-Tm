@@ -82,18 +82,37 @@ class AuthService {
     return response.json()
   }
 
-  async logout(accessToken: string): Promise<void> {
+  async logout(accessToken: string, refreshToken?: string): Promise<void> {
+    const body = refreshToken ? JSON.stringify({ refresh_token: refreshToken }) : undefined
+    
     const response = await fetch(`${this.baseUrl}/logout`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body,
+    })
+
+    if (!response.ok) {
+      // Don't throw error for logout - it should always succeed on client side
+      console.warn('Backend logout failed, but proceeding with client cleanup')
+    }
+  }
+
+  async logoutAll(accessToken: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/logout-all`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || 'Logout failed')
+      console.warn('Backend logout all failed, but proceeding with client cleanup')
     }
   }
 

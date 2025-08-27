@@ -17,6 +17,7 @@ export function useAuth() {
     setSession,
     login,
     logout,
+    logoutAll,
     register,
     clearError
   } = useAuthStore()
@@ -58,6 +59,7 @@ export function useAuth() {
     // Actions
     login,
     logout,
+    logoutAll,
     register,
     clearError,
     

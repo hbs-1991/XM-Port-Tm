@@ -105,6 +105,25 @@ class SessionService:
         key = f"{self.password_reset_prefix}{user_id}:{reset_token}"
         await self.redis_client.delete(key)
     
+    async def cleanup_user_data(self, user_id: str) -> None:
+        """
+        Clean up all user-related data from Redis when user is deleted.
+        
+        Args:
+            user_id: User's unique identifier
+        """
+        # Invalidate all refresh tokens
+        await self.invalidate_user_sessions(user_id)
+        
+        # Invalidate all password reset tokens  
+        reset_pattern = f"{self.password_reset_prefix}{user_id}:*"
+        reset_keys = []
+        async for key in self.redis_client.scan_iter(match=reset_pattern):
+            reset_keys.append(key)
+        
+        if reset_keys:
+            await self.redis_client.delete(*reset_keys)
+    
     async def close(self) -> None:
         """Close Redis connection."""
         await self.redis_client.close()

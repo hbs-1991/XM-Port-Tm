@@ -120,51 +120,58 @@ const authOptions: NextAuthOptions = {
             token.accessToken = refreshedTokens.access_token
             token.refreshToken = refreshedTokens.refresh_token
             token.accessTokenExpires = now + (15 * 60) // 15 minutes
+          } else {
+            // If refresh fails, clear all token data to force re-authentication
+            return {}
           }
         } catch (error) {
           console.error('Token refresh failed:', error)
-          // Force re-login by returning proper JWT structure
-          return {
-            userId: token.userId,
-            role: token.role,
-            accessToken: '',
-            refreshToken: '',
-            accessTokenExpires: 0,
-          }
+          // Clear all token data to force re-authentication
+          return {}
         }
       }
 
       return token
     },
     async session({ session, token }) {
+      // Check if we have valid token data
+      if (!token.userId || !token.accessToken) {
+        // If token is invalid or missing, return null to force re-authentication
+        return null
+      }
+
       // Send properties to the client
-      if (token.userId) {
-        session.user.id = token.userId as string
-        session.user.role = token.role as UserRole
-        session.accessToken = token.accessToken as string
-        session.refreshToken = token.refreshToken as string
+      session.user.id = token.userId as string
+      session.user.role = token.role as UserRole
+      session.accessToken = token.accessToken as string
+      session.refreshToken = token.refreshToken as string
+      
+      // Fetch full user data for session
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+        const response = await fetch(`${apiUrl}/api/v1/users/profile`, {
+          headers: {
+            'Authorization': `Bearer ${token.accessToken}`,
+          },
+        })
         
-        // Fetch full user data for session
-        try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-          const response = await fetch(`${apiUrl}/api/v1/users/profile`, {
-            headers: {
-              'Authorization': `Bearer ${token.accessToken}`,
-            },
-          })
-          
-          if (response.ok) {
-            const userData = await response.json()
-            session.user = {
-              ...session.user,
-              ...userData,
-              accessToken: token.accessToken as string,
-              refreshToken: token.refreshToken as string,
-            }
+        if (response.ok) {
+          const userData = await response.json()
+          session.user = {
+            ...session.user,
+            ...userData,
+            accessToken: token.accessToken as string,
+            refreshToken: token.refreshToken as string,
           }
-        } catch (error) {
-          console.error('Failed to fetch user profile:', error)
+        } else if (response.status === 401 || response.status === 404) {
+          // User no longer exists or token is invalid
+          console.log('User profile fetch failed, forcing re-authentication')
+          return null
         }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error)
+        // On fetch error, return null to force re-authentication
+        return null
       }
       
       return session
@@ -173,6 +180,25 @@ const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/auth/login',
     error: '/auth/error',
+  },
+  events: {
+    async signOut({ token }) {
+      // Clean up refresh tokens when user signs out
+      if (token?.userId && token?.refreshToken) {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+          await fetch(`${apiUrl}/api/v1/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token.accessToken}`,
+            },
+          })
+        } catch (error) {
+          console.error('Error during logout cleanup:', error)
+        }
+      }
+    },
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
@@ -195,7 +221,14 @@ async function refreshAccessToken(refreshToken: string) {
     })
 
     if (!response.ok) {
-      throw new Error('Failed to refresh token')
+      if (response.status === 401) {
+        console.log('Refresh token is invalid or expired')
+      } else if (response.status === 404) {
+        console.log('User not found during token refresh')
+      } else {
+        console.error(`Token refresh failed with status ${response.status}`)
+      }
+      return null
     }
 
     const tokens = await response.json()

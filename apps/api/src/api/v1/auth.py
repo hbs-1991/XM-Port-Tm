@@ -184,9 +184,55 @@ async def login(credentials: UserLoginRequest):
 
 
 @router.post("/logout", response_model=LogoutResponse)
-async def logout(token: str = Depends(security)):
+async def logout(request: Request, token: str = Depends(security)):
     """
-    User logout endpoint that clears session and invalidates tokens.
+    User logout endpoint that clears current session and invalidates tokens.
+    
+    Args:
+        request: FastAPI request object
+        token: Bearer token from Authorization header
+        
+    Returns:
+        Logout confirmation message
+    """
+    try:
+        # Decode token to get user ID
+        payload = auth_service.decode_token(token.credentials)
+        user_id = payload.get("sub")
+        
+        if user_id:
+            # Get refresh token from request body if provided (for targeted logout)
+            body = await request.body()
+            refresh_token = None
+            
+            if body:
+                try:
+                    import json
+                    data = json.loads(body)
+                    refresh_token = data.get("refresh_token")
+                except:
+                    pass
+            
+            # If we have a specific refresh token, invalidate just that session
+            # Otherwise, invalidate all sessions for security (logout from all devices)
+            if refresh_token:
+                await session_service.invalidate_refresh_token(user_id, refresh_token)
+            else:
+                await session_service.invalidate_user_sessions(user_id)
+        
+        return LogoutResponse()
+        
+    except Exception as e:
+        # Log the error for debugging but don't expose it
+        print(f"[DEBUG] Logout error: {str(e)}")
+        # Even if token is invalid, return success for security
+        return LogoutResponse()
+
+
+@router.post("/logout-all", response_model=LogoutResponse)
+async def logout_all_devices(token: str = Depends(security)):
+    """
+    User logout endpoint that invalidates ALL sessions for the user (logout from all devices).
     
     Args:
         token: Bearer token from Authorization header
@@ -200,14 +246,17 @@ async def logout(token: str = Depends(security)):
         user_id = payload.get("sub")
         
         if user_id:
-            # Invalidate all refresh tokens for the user
+            # Invalidate ALL refresh tokens for the user across all devices
             await session_service.invalidate_user_sessions(user_id)
+            print(f"[DEBUG] All sessions invalidated for user: {user_id}")
         
-        return LogoutResponse()
+        return LogoutResponse(message="Successfully logged out from all devices")
         
-    except Exception:
-        # Even if token is invalid, return success for security
-        return LogoutResponse()
+    except Exception as e:
+        # Log the error for debugging but don't expose it
+        print(f"[DEBUG] Logout all devices error: {str(e)}")
+        # Return success for security even if operation failed
+        return LogoutResponse(message="Successfully logged out from all devices")
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -249,6 +298,9 @@ async def refresh_token(refresh_data: RefreshTokenRequest):
         # Get user from database
         user = await user_repository.get_by_id(UUID(user_id))
         if not user or not user.is_active:
+            print(f"[DEBUG] User {user_id} not found or disabled, cleaning up sessions")
+            # Clean up all sessions for this user since they no longer exist
+            await session_service.invalidate_user_sessions(user_id)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found or disabled"

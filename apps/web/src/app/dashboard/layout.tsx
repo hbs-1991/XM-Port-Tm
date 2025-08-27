@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AuthGuard } from '@/components/shared/AuthGuard'
 import { useAuth } from '@/hooks/useAuth'
-import { signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import {
   Home,
   Upload,
@@ -47,12 +47,25 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const pathname = usePathname()
-  const { user } = useAuth()
+  const router = useRouter()
+  const { user, logout, isLoading } = useAuth()
   const { notifications, clearNotifications, isConnected, connectionStatus } = useProcessingUpdates()
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/' })
+    setIsLoggingOut(true)
+    try {
+      await logout()
+      // Navigate to home page after successful logout
+      router.push('/')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // Even if logout fails, try to redirect to home
+      router.push('/')
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   const getUserInitials = () => {
@@ -222,10 +235,11 @@ export default function DashboardLayout({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={handleSignOut}
-                      className="cursor-pointer text-red-600 focus:text-red-600"
+                      disabled={isLoggingOut || isLoading}
+                      className="cursor-pointer text-red-600 focus:text-red-600 disabled:opacity-50"
                     >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign Out
+                      <LogOut className={`mr-2 h-4 w-4 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                      {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
