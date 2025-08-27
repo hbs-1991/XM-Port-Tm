@@ -76,11 +76,16 @@ export const useProcessingUpdates = (
       return // Already connected
     }
 
+    // Don't try to connect if already connecting
+    if (wsRef.current?.readyState === WebSocket.CONNECTING) {
+      return
+    }
+
     try {
       setConnectionStatus('connecting')
       const wsUrl = process.env.NODE_ENV === 'production' 
-        ? `wss://${window.location.host}/ws/processing-updates?token=${encodeURIComponent(token)}`
-        : `ws://localhost:8000/ws/processing-updates?token=${encodeURIComponent(token)}`
+        ? `wss://${window.location.host}/api/v1/ws/processing-updates?token=${encodeURIComponent(token)}`
+        : `ws://localhost:8000/api/v1/ws/processing-updates?token=${encodeURIComponent(token)}`
 
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
@@ -214,7 +219,22 @@ export const useProcessingUpdates = (
       reconnectTimeoutRef.current = null
     }
     if (wsRef.current) {
-      wsRef.current.close()
+      const ws = wsRef.current
+      const state = ws.readyState
+      
+      if (state === WebSocket.OPEN) {
+        ws.close(1000, 'Manual disconnect')
+      } else if (state === WebSocket.CONNECTING) {
+        // If still connecting, wait for connection then close
+        ws.addEventListener('open', () => {
+          ws.close(1000, 'Manual disconnect')
+        })
+        // Also add error handler to clean up if connection fails
+        ws.addEventListener('error', () => {
+          wsRef.current = null
+        })
+      }
+      // If CLOSING or CLOSED, nothing to do
     }
     setConnectionStatus('disconnected')
   }, [])

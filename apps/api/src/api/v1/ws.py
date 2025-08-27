@@ -71,6 +71,8 @@ async def websocket_processing_updates(
     db: Session = Depends(get_db)
 ):
     """WebSocket endpoint for real-time processing updates"""
+    logger.info(f"WebSocket connection attempt - Token present: {bool(token)}")
+    
     try:
         # Authenticate user via token
         user = None
@@ -78,11 +80,13 @@ async def websocket_processing_updates(
             try:
                 user = await get_current_user_ws(token)
                 user_id = str(user.id)
+                logger.info(f"WebSocket authenticated for user {user_id}")
             except Exception as e:
-                logger.warning(f"WebSocket authentication failed: {e}")
+                logger.error(f"WebSocket authentication failed: {e}")
                 await websocket.close(code=4001, reason="Authentication failed")
                 return
         else:
+            logger.warning("WebSocket connection attempt without token")
             await websocket.close(code=4001, reason="Authentication required")
             return
         

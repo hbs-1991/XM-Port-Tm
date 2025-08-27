@@ -21,11 +21,17 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-# CORS SETUP - Comprehensive headers for cross-origin requests
+# CORS SETUP - Comprehensive headers for cross-origin requests including WebSocket
+# WebSocket connections inherit CORS settings from HTTP
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1):(3000|3001)$",    
-    allow_credentials=True,  # Must be False when using "*"
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=[
@@ -45,7 +51,7 @@ logger.info("CORS and security headers middleware applied")
 # API routes
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(processing.router, prefix="/api/v1/processing", tags=["processing"])
-app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(xml_generation.router, prefix="/api/v1", tags=["xml-generation"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(ws.router, prefix="/api/v1/ws", tags=["websocket"])
