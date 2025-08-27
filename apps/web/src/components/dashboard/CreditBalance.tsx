@@ -97,9 +97,9 @@ export function CreditBalance({
     )
   }
 
-  const isLowBalance = displayBalance.remaining < 100
-  const isVeryLowBalance = displayBalance.remaining < 25
-  const usagePercentage = Math.min(displayBalance.percentageUsed, 100)
+  const isLowBalance = (displayBalance.remaining ?? 0) < 100
+  const isVeryLowBalance = (displayBalance.remaining ?? 0) < 25
+  const usagePercentage = Math.min(displayBalance.percentageUsed ?? 0, 100)
 
   const getTierColor = (tier: string | undefined) => {
     if (!tier) return 'bg-gray-100 text-gray-800 border-gray-200'
@@ -141,7 +141,7 @@ export function CreditBalance({
           {/* Current Balance */}
           <div className="text-center">
             <div className="text-3xl font-bold text-gray-900">
-              {displayBalance.remaining.toLocaleString()}
+              {(displayBalance.remaining ?? 0).toLocaleString()}
             </div>
             <div className="text-sm text-gray-500 mt-1">
               Credits Available
@@ -153,7 +153,7 @@ export function CreditBalance({
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Monthly Usage</span>
               <span className="font-medium">
-                {displayBalance.usedThisMonth.toLocaleString()} / {displayBalance.total.toLocaleString()}
+                {(displayBalance.usedThisMonth ?? 0).toLocaleString()} / {(displayBalance.total ?? 0).toLocaleString()}
               </span>
             </div>
             <Progress 

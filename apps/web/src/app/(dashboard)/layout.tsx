@@ -31,6 +31,8 @@ import {
 import { Button } from '@/components/shared/ui/button'
 import { Avatar, AvatarFallback } from '@/components/shared/ui/ui/avatar'
 import { Badge } from '@/components/shared/ui/badge'
+import NotificationCenter from '@/components/shared/NotificationCenter'
+import { useProcessingUpdates } from '@/hooks/useProcessingUpdates'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -47,6 +49,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
   const { user } = useAuth()
+  const { notifications, clearNotifications, isConnected, connectionStatus } = useProcessingUpdates()
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' })
@@ -235,6 +238,14 @@ export default function DashboardLayout({
             <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
           </main>
         </div>
+
+        {/* Notification Center - Fixed positioning */}
+        <NotificationCenter
+          notifications={notifications}
+          onClearNotifications={clearNotifications}
+          isConnected={isConnected}
+          connectionStatus={connectionStatus}
+        />
       </div>
     </AuthGuard>
   )

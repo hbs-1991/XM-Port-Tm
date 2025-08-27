@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useAuth } from './useAuth'
+import { useSession } from 'next-auth/react'
 
 export interface ProcessingUpdate {
   type: 'processing_update'
@@ -46,7 +46,8 @@ export const useProcessingUpdates = (
     maxReconnectAttempts = 5
   } = options
 
-  const { token } = useAuth()
+  const { data: session } = useSession()
+  const token = session?.accessToken
   const [isConnected, setIsConnected] = useState(false)
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null)
   const [notifications, setNotifications] = useState<WebSocketNotification[]>([])
@@ -67,7 +68,7 @@ export const useProcessingUpdates = (
 
   const connect = useCallback(() => {
     if (!token) {
-      setConnectionStatus('error')
+      setConnectionStatus('disconnected')
       return
     }
 
@@ -119,7 +120,14 @@ export const useProcessingUpdates = (
       }
 
       ws.onclose = (event) => {
-        console.log('WebSocket disconnected', event.code, event.reason)
+        console.log('WebSocket disconnected:', {
+          code: event.code,
+          reason: event.reason || 'No reason provided',
+          wasClean: event.wasClean,
+          timestamp: new Date().toISOString(),
+          isManualClose: isManualClose.current,
+          reconnectAttempts: reconnectAttemptsRef.current
+        })
         setIsConnected(false)
         wsRef.current = null
 
@@ -127,22 +135,75 @@ export const useProcessingUpdates = (
           setConnectionStatus('connecting')
           reconnectAttemptsRef.current += 1
           
+          // Add reconnection notification
+          const reconnectNotification: WebSocketNotification = {
+            type: 'notification',
+            level: 'warning',
+            message: `Connection lost. Reconnecting... (Attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`,
+            timestamp: Date.now()
+          }
+          addNotification(reconnectNotification)
+          
           reconnectTimeoutRef.current = setTimeout(() => {
             connect()
           }, reconnectDelay * Math.pow(1.5, reconnectAttemptsRef.current - 1)) // Exponential backoff
         } else {
           setConnectionStatus(isManualClose.current ? 'disconnected' : 'error')
+          
+          if (!isManualClose.current && reconnectAttemptsRef.current >= maxReconnectAttempts) {
+            // Max reconnect attempts reached
+            const maxAttemptsNotification: WebSocketNotification = {
+              type: 'notification',
+              level: 'error',
+              message: 'Connection could not be restored. Please refresh the page to try again.',
+              timestamp: Date.now()
+            }
+            addNotification(maxAttemptsNotification)
+          }
         }
       }
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
+        const errorDetails = {
+          timestamp: new Date().toISOString(),
+          readyState: ws.readyState,
+          url: ws.url,
+          errorType: error?.type || 'unknown',
+          target: error?.target?.constructor?.name || 'WebSocket',
+          reconnectAttempts: reconnectAttemptsRef.current
+        }
+        console.error('WebSocket error occurred:')
+        console.error(errorDetails)
         setConnectionStatus('error')
+        
+        // Add user-friendly notification
+        const errorNotification: WebSocketNotification = {
+          type: 'notification',
+          level: 'error',
+          message: 'Connection error occurred. Attempting to reconnect...',
+          timestamp: Date.now()
+        }
+        addNotification(errorNotification)
       }
 
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error)
+      console.error('Failed to create WebSocket connection:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
+        token: token ? '***present***' : 'missing',
+        reconnectAttempts: reconnectAttemptsRef.current
+      })
       setConnectionStatus('error')
+      
+      // Add user-friendly notification
+      const connectionErrorNotification: WebSocketNotification = {
+        type: 'notification',
+        level: 'error',
+        message: 'Failed to establish connection. Please check your network and try again.',
+        timestamp: Date.now()
+      }
+      addNotification(connectionErrorNotification)
     }
   }, [token, autoReconnect, reconnectDelay, maxReconnectAttempts, addNotification])
 

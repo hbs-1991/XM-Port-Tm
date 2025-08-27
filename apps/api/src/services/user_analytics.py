@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import select, func, and_, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database import get_db
+from src.core.database import async_session_maker
 from src.models.user import User
 from src.models.processing_job import ProcessingJob, ProcessingStatus
 
@@ -27,7 +27,7 @@ class UserAnalyticsService:
         Returns:
             Dictionary containing user statistics
         """
-        async with get_db() as session:
+        async with async_session_maker() as session:
             user = await session.get(User, user_id)
             if not user:
                 raise ValueError("User not found")
@@ -239,7 +239,7 @@ class UserAnalyticsService:
         Returns:
             User profile dictionary or None if not found
         """
-        async with get_db() as session:
+        async with async_session_maker() as session:
             user = await session.get(User, user_id)
             if not user:
                 return None
@@ -274,7 +274,7 @@ class UserAnalyticsService:
         Returns:
             Updated user profile dictionary or None if user not found
         """
-        async with get_db() as session:
+        async with async_session_maker() as session:
             user = await session.get(User, user_id)
             if not user:
                 return None

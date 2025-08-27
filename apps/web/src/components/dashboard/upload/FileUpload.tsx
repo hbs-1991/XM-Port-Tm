@@ -356,7 +356,7 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
                         <CheckCircle2 className="w-4 h-4" />
                         <AlertDescription>
                           Upload completed successfully! File processed with{' '}
-                          {uploadedFile.job?.totalProducts || 0} products.
+                          {uploadedFile.job?.total_products || 0} products.
                         </AlertDescription>
                       </Alert>
                     )}

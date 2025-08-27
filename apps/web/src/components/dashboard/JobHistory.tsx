@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Table,
   TableBody,
@@ -30,10 +30,12 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Calendar
+  Calendar,
+  Loader2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ProcessingJob, ProcessingStatus } from '@shared/types/processing'
+import { useProcessingUpdates, ProcessingUpdate } from '@/hooks/useProcessingUpdates'
 
 interface JobHistoryProps {
   className?: string
@@ -115,6 +117,9 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
     date_from: '',
     date_to: ''
   })
+
+  // WebSocket integration for real-time updates
+  const { lastMessage, isConnected } = useProcessingUpdates()
 
   const fetchJobs = async (page: number = 1, filters = appliedFilters) => {
     try {
@@ -269,14 +274,76 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
     fetchJobs()
   }, [])
 
-  const StatusBadge: React.FC<{ status: ProcessingStatus }> = ({ status }) => {
+  // Handle real-time WebSocket updates
+  useEffect(() => {
+    if (!lastMessage || lastMessage.type !== 'processing_update') return
+
+    const update = lastMessage as ProcessingUpdate
+    
+    // Update the job in the current jobs list if it exists
+    setJobs(prevJobs => {
+      const jobIndex = prevJobs.findIndex(job => job.id === update.job_id)
+      
+      if (jobIndex >= 0) {
+        const updatedJobs = [...prevJobs]
+        const job = { ...updatedJobs[jobIndex] }
+        
+        // Update job status and related fields
+        job.status = update.status as ProcessingStatus
+        
+        // Update additional fields from the update data if available
+        if (update.data) {
+          if (update.data.processing_time_ms !== undefined) {
+            job.processing_time_ms = update.data.processing_time_ms
+          }
+          if (update.data.has_xml_output !== undefined) {
+            job.has_xml_output = update.data.has_xml_output
+          }
+          if (update.data.xml_generation_status !== undefined) {
+            job.xml_generation_status = update.data.xml_generation_status
+          }
+          if (update.data.total_products !== undefined) {
+            job.total_products = update.data.total_products
+          }
+          if (update.data.successful_matches !== undefined) {
+            job.successful_matches = update.data.successful_matches
+          }
+          if (update.data.average_confidence !== undefined) {
+            job.average_confidence = update.data.average_confidence
+          }
+        }
+        
+        updatedJobs[jobIndex] = job
+        return updatedJobs
+      }
+      
+      // If job is not in current list, we might need to refetch
+      // This could happen if a new job was just created
+      return prevJobs
+    })
+  }, [lastMessage])
+
+  // Memoized jobs with real-time progress indication
+  const jobsWithProgress = useMemo(() => {
+    return jobs.map(job => ({
+      ...job,
+      isActive: [ProcessingStatus.PENDING, ProcessingStatus.PROCESSING].includes(job.status as ProcessingStatus),
+      progress: job.status === ProcessingStatus.PROCESSING ? 50 : 
+                job.status === ProcessingStatus.COMPLETED ? 100 : 0
+    }))
+  }, [jobs])
+
+  const StatusBadge: React.FC<{ status: ProcessingStatus; isActive?: boolean }> = ({ status, isActive }) => {
     const config = statusConfig[status] || statusConfig[ProcessingStatus.PENDING]
-    const Icon = config.icon
+    const Icon = isActive && status === ProcessingStatus.PROCESSING ? Loader2 : config.icon
     
     return (
       <Badge variant="secondary" className={config.color}>
-        <Icon className="mr-1 h-3 w-3" />
+        <Icon className={`mr-1 h-3 w-3 ${isActive && status === ProcessingStatus.PROCESSING ? 'animate-spin' : ''}`} />
         {config.label}
+        {!isConnected && isActive && (
+          <span className="ml-1 text-xs opacity-75">(offline)</span>
+        )}
       </Badge>
     )
   }
@@ -329,7 +396,22 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>Processing History</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Processing History</CardTitle>
+          <div className="flex items-center gap-2">
+            {isConnected ? (
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                Live Updates
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="bg-gray-100 text-gray-600">
+                <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                Offline
+              </Badge>
+            )}
+          </div>
+        </div>
         <div className="flex flex-col gap-4 mt-4">
           {/* Search and Filters */}
           <div className="flex flex-col md:flex-row gap-4">
@@ -426,19 +508,22 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {jobs.map((job) => (
-                    <TableRow key={job.id}>
+                  {jobsWithProgress.map((job) => (
+                    <TableRow key={job.id} className={job.isActive ? 'bg-blue-50/30' : ''}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{job.input_file_name}</div>
                           <div className="text-sm text-muted-foreground">
                             {formatFileSize(job.input_file_size)} • {job.country_schema}
+                            {job.isActive && isConnected && (
+                              <span className="ml-2 text-xs text-blue-600 font-medium">• Live</span>
+                            )}
                           </div>
                         </div>
                       </TableCell>
                       
                       <TableCell>
-                        <StatusBadge status={job.status as ProcessingStatus} />
+                        <StatusBadge status={job.status as ProcessingStatus} isActive={job.isActive} />
                       </TableCell>
                       
                       <TableCell>

@@ -1,13 +1,7 @@
 {
+  "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
   "/_not-found/page": "app/_not-found/page.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
   "/auth/login/page": "app/auth/login/page.js",
-  "/page": "app/page.js",
-  "/auth/register/page": "app/auth/register/page.js",
-  "/unauthorized/page": "app/unauthorized/page.js",
-  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
-  "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
-  "/(dashboard)/history/page": "app/(dashboard)/history/page.js",
-  "/(dashboard)/upload/page": "app/(dashboard)/upload/page.js"
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js"
 }
