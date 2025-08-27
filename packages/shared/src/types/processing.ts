@@ -35,18 +35,19 @@ export enum ProcessingStatus {
 
 export interface ProductMatch {
   id: string;
-  jobId: string;
-  productDescription: string;
+  jobId?: string;
+  product_description: string;
   quantity: number;
-  unitOfMeasure: string;
+  unit_of_measure: string;
   value: number;
-  originCountry: string;
-  matchedHsCode: string;
-  confidenceScore: number;
-  alternativeHsCodes: string[];
-  requiresManualReview: boolean;
-  userConfirmed: boolean;
-  createdAt: Date;
+  origin_country: string;
+  matched_hs_code: string;
+  confidence_score: number;
+  alternative_hs_codes: string[];
+  vector_store_reasoning?: string;
+  requires_manual_review: boolean;
+  user_confirmed: boolean;
+  created_at: string;
 }
 
 export interface HSCode {
@@ -75,4 +76,18 @@ export interface ProcessingOptions {
   extractionMode: 'basic' | 'advanced';
   validateHsCodes: boolean;
   generateXml: boolean;
+}
+
+export interface JobDetailsStatistics {
+  total_matches: number;
+  high_confidence_matches: number;
+  manual_review_required: number;
+  user_confirmed: number;
+  success_rate: number;
+}
+
+export interface JobDetailsResponse {
+  job: ProcessingJob;
+  product_matches: ProductMatch[];
+  statistics: JobDetailsStatistics;
 }

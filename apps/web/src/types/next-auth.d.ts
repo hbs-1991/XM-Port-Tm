@@ -3,7 +3,7 @@
  */
 import 'next-auth'
 import 'next-auth/jwt'
-import type { User as SharedUser } from '@xm-port/shared/types'
+import type { User as SharedUser } from '@xm-port/shared'
 
 declare module 'next-auth' {
   interface Session {

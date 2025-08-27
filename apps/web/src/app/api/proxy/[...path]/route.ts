@@ -16,21 +16,36 @@ async function handleRequest(
   try {
     const headers = new Headers();
     
-    // Forward relevant headers, excluding host-related ones
-    request.headers.forEach((value, key) => {
-      if (!['host', 'connection', 'transfer-encoding'].includes(key.toLowerCase())) {
-        headers.set(key, value);
-      }
-    });
-    
     let body: any = undefined;
     
     // Handle different content types
     const contentType = request.headers.get('content-type');
+    
+    // Forward relevant headers, excluding problematic ones
+    request.headers.forEach((value, key) => {
+      const lowerKey = key.toLowerCase();
+      if (!['host', 'connection', 'transfer-encoding', 'content-length'].includes(lowerKey)) {
+        // For FormData, exclude content-type to let fetch set it with correct boundary
+        if (lowerKey === 'content-type' && contentType?.includes('multipart/form-data')) {
+          // Skip - let fetch handle FormData content-type with boundary
+          return;
+        }
+        headers.set(key, value);
+      }
+    });
+    
+    // Debug: Log authorization header
+    const authHeader = request.headers.get('authorization');
+    console.log(`[Proxy Debug] Authorization header: ${authHeader ? 'Present' : 'Missing'}`);
+    if (authHeader) {
+      console.log(`[Proxy Debug] Auth header starts with: ${authHeader.substring(0, 20)}...`);
+    }
+    
     if (method !== 'GET' && method !== 'HEAD') {
       if (contentType?.includes('multipart/form-data')) {
-        // Handle file uploads
+        // Handle file uploads - let fetch handle the boundary
         body = await request.formData();
+        console.log(`[Proxy Debug] Processing FormData, letting fetch set content-type boundary`);
       } else if (contentType?.includes('application/json')) {
         body = await request.text(); // Keep as string to preserve formatting
       } else {
@@ -45,6 +60,17 @@ async function handleRequest(
     });
     
     console.log(`[Proxy Response] ${method} ${url}: ${response.status} ${response.statusText}`);
+    
+    // Debug: Log error response body for 4xx errors
+    if (response.status >= 400 && response.status < 500) {
+      try {
+        const responseClone = response.clone();
+        const errorText = await responseClone.text();
+        console.log(`[Proxy Debug] Error response body:`, errorText);
+      } catch (e) {
+        console.log(`[Proxy Debug] Could not read error response body`);
+      }
+    }
     
     // Handle different response types
     const responseContentType = response.headers.get('content-type');

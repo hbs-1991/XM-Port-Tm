@@ -4,6 +4,7 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import type { NextAuthOptions } from 'next-auth'
+import { UserRole } from '@xm-port/shared'
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -139,7 +140,7 @@ const authOptions: NextAuthOptions = {
       // Send properties to the client
       if (token.userId) {
         session.user.id = token.userId as string
-        session.user.role = token.role as string
+        session.user.role = token.role as UserRole
         session.accessToken = token.accessToken as string
         session.refreshToken = token.refreshToken as string
         

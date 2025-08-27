@@ -52,8 +52,9 @@ structlog
 # S3
 boto3
 
-# Pandas
+# Pandas & Excel Support
 pandas
+openpyxl
 
 # Mimetypes
 mimetype

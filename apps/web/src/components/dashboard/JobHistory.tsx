@@ -31,11 +31,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
-  Loader2
+  Loader2,
+  Eye
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ProcessingJob, ProcessingStatus } from '@shared/types/processing'
 import { useProcessingUpdates, ProcessingUpdate } from '@/hooks/useProcessingUpdates'
+import { JobDetails } from './JobDetails'
 
 interface JobHistoryProps {
   className?: string
@@ -117,6 +119,10 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
     date_from: '',
     date_to: ''
   })
+  
+  // Job details modal state
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const [isJobDetailsOpen, setIsJobDetailsOpen] = useState(false)
 
   // WebSocket integration for real-time updates
   const { lastMessage, isConnected } = useProcessingUpdates()
@@ -246,6 +252,16 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
       // You could replace this with a toast notification in the future
       alert(errorMessage)
     }
+  }
+
+  const handleViewJobDetails = (jobId: string) => {
+    setSelectedJobId(jobId)
+    setIsJobDetailsOpen(true)
+  }
+
+  const handleCloseJobDetails = () => {
+    setIsJobDetailsOpen(false)
+    setSelectedJobId(null)
   }
 
   const formatProcessingTime = (timeMs: number | null) => {
@@ -394,6 +410,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
   }
 
   return (
+    <>
     <Card className={className}>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -562,11 +579,20 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
                       
                       <TableCell>
                         <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewJobDetails(job.id)}
+                            title="View job details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           {job.has_xml_output && job.xml_generation_status === 'COMPLETED' && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleDownload(job.id, job.input_file_name)}
+                              title="Download XML file"
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -619,6 +645,16 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
         )}
       </CardContent>
     </Card>
+    
+    {/* Job Details Modal */}
+    {selectedJobId && (
+      <JobDetails
+        jobId={selectedJobId}
+        isOpen={isJobDetailsOpen}
+        onClose={handleCloseJobDetails}
+      />
+    )}
+    </>
   )
 }
 

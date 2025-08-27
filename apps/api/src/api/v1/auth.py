@@ -225,13 +225,22 @@ async def refresh_token(refresh_data: RefreshTokenRequest):
         HTTPException: If refresh token is invalid or expired
     """
     try:
+        # Debug logging
+        print(f"[DEBUG] Refresh token request received")
+        print(f"[DEBUG] Refresh token length: {len(refresh_data.refresh_token)}")
+        print(f"[DEBUG] Refresh token starts with: {refresh_data.refresh_token[:20]}...")
+        
         # Validate refresh token
         payload = auth_service.validate_refresh_token(refresh_data.refresh_token)
+        print(f"[DEBUG] Token validation successful, user_id: {payload.get('sub')}")
         user_id = payload.get("sub")
         
         # Check if refresh token exists in Redis
+        print(f"[DEBUG] Checking refresh token in Redis for user: {user_id}")
         is_valid = await session_service.validate_refresh_token(user_id, refresh_data.refresh_token)
+        print(f"[DEBUG] Redis validation result: {is_valid}")
         if not is_valid:
+            print(f"[DEBUG] Refresh token validation failed in Redis")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired refresh token"
@@ -261,6 +270,8 @@ async def refresh_token(refresh_data: RefreshTokenRequest):
     except HTTPException:
         raise
     except Exception as e:
+        print(f"[DEBUG] Token refresh error: {str(e)}")
+        print(f"[DEBUG] Error type: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"

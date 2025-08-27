@@ -1,6 +1,6 @@
 'use client';
 
-import { ProcessingJob } from '@xm-port/shared/types';
+import { ProcessingJob } from '@xm-port/shared';
 
 interface UploadFileParams {
   file: File;
@@ -24,11 +24,18 @@ const USE_PROXY = true; // Enable proxy to avoid CORS issues with WSL
 
 class ProcessingService {
   private async fetchWithAuth(url: string, options: RequestInit = {}) {
-    // TODO: Add authentication headers when auth is implemented
+    // Get NextAuth session token
+    const { getSession } = await import('next-auth/react');
+    const session = await getSession();
+    
     const headers = {
       ...options.headers,
-      // 'Authorization': `Bearer ${token}`,
     };
+    
+    // Add authorization header if session exists
+    if (session?.accessToken) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${session.accessToken}`;
+    }
 
     const baseUrl = USE_PROXY ? '/api/proxy' : API_BASE_URL;
     const response = await fetch(`${baseUrl}${url}`, {
@@ -50,6 +57,10 @@ class ProcessingService {
     countrySchema, 
     onProgress 
   }: UploadFileParams): Promise<UploadResponse> {
+    // Get auth token first
+    const { getSession } = await import('next-auth/react');
+    const session = await getSession();
+    
     return new Promise((resolve, reject) => {
       const formData = new FormData();
       formData.append('file', file);
@@ -95,8 +106,10 @@ class ProcessingService {
       const baseUrl = USE_PROXY ? '/api/proxy' : API_BASE_URL;
       xhr.open('POST', `${baseUrl}/api/v1/processing/upload`);
       
-      // TODO: Add auth header when implemented
-      // xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      // Add auth header if available
+      if (session?.accessToken) {
+        xhr.setRequestHeader('Authorization', `Bearer ${session.accessToken}`);
+      }
       
       xhr.send(formData);
     });
@@ -137,8 +150,23 @@ class ProcessingService {
 
   async validateFile(file: File): Promise<{
     valid: boolean;
-    errors: string[];
+    errors: Array<{
+      field: string;
+      error: string;
+      row?: number;
+      column?: string;
+    }>;
     warnings: string[];
+    total_rows: number;
+    valid_rows: number;
+    summary?: {
+      total_errors: number;
+      total_warnings: number;
+      errors_by_field: Record<string, number>;
+      errors_by_type: Record<string, number>;
+      most_common_errors: string[];
+      data_quality_score: number;
+    };
     previewData?: any[];
   }> {
     const formData = new FormData();

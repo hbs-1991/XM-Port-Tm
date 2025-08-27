@@ -1,7 +1,8 @@
 {
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
   "/auth/login/page": "app/auth/login/page.js",
-  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js"
+  "/dashboard/upload/page": "app/dashboard/upload/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/history/page": "app/dashboard/history/page.js"
 }

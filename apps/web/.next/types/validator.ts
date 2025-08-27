@@ -47,30 +47,6 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 }
 
 
-// Validate ../../src/app/(dashboard)/dashboard/page.tsx
-{
-  const handler = {} as typeof import("../../src/app/(dashboard)/dashboard/page.js")
-  handler satisfies AppPageConfig<"/dashboard">
-}
-
-// Validate ../../src/app/(dashboard)/history/page.tsx
-{
-  const handler = {} as typeof import("../../src/app/(dashboard)/history/page.js")
-  handler satisfies AppPageConfig<"/history">
-}
-
-// Validate ../../src/app/(dashboard)/profile/page.tsx
-{
-  const handler = {} as typeof import("../../src/app/(dashboard)/profile/page.js")
-  handler satisfies AppPageConfig<"/profile">
-}
-
-// Validate ../../src/app/(dashboard)/upload/page.tsx
-{
-  const handler = {} as typeof import("../../src/app/(dashboard)/upload/page.js")
-  handler satisfies AppPageConfig<"/upload">
-}
-
 // Validate ../../src/app/auth/login/page.tsx
 {
   const handler = {} as typeof import("../../src/app/auth/login/page.js")
@@ -81,6 +57,30 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   const handler = {} as typeof import("../../src/app/auth/register/page.js")
   handler satisfies AppPageConfig<"/auth/register">
+}
+
+// Validate ../../src/app/dashboard/history/page.tsx
+{
+  const handler = {} as typeof import("../../src/app/dashboard/history/page.js")
+  handler satisfies AppPageConfig<"/dashboard/history">
+}
+
+// Validate ../../src/app/dashboard/page.tsx
+{
+  const handler = {} as typeof import("../../src/app/dashboard/page.js")
+  handler satisfies AppPageConfig<"/dashboard">
+}
+
+// Validate ../../src/app/dashboard/profile/page.tsx
+{
+  const handler = {} as typeof import("../../src/app/dashboard/profile/page.js")
+  handler satisfies AppPageConfig<"/dashboard/profile">
+}
+
+// Validate ../../src/app/dashboard/upload/page.tsx
+{
+  const handler = {} as typeof import("../../src/app/dashboard/upload/page.js")
+  handler satisfies AppPageConfig<"/dashboard/upload">
 }
 
 // Validate ../../src/app/page.tsx
@@ -117,10 +117,10 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   handler satisfies LayoutConfig<"/">
 }
 
-// Validate ../../src/app/(dashboard)/layout.tsx
+// Validate ../../src/app/dashboard/layout.tsx
 {
-  const handler = {} as typeof import("../../src/app/(dashboard)/layout.js")
-  handler satisfies LayoutConfig<"/">
+  const handler = {} as typeof import("../../src/app/dashboard/layout.js")
+  handler satisfies LayoutConfig<"/dashboard">
 }
 
 // Validate ../../src/app/layout.tsx

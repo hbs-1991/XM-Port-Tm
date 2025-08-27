@@ -5,7 +5,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { signIn, signOut, getSession } from 'next-auth/react'
 import type { Session } from 'next-auth'
-import type { User } from '@xm-port/shared/types'
+import type { User } from '@xm-port/shared'
 
 interface AuthState {
   user: User | null

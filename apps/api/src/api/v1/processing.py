@@ -442,6 +442,112 @@ async def update_job_data(
         )
 
 
+@router.get("/jobs/{job_id}/details")
+async def get_job_details(
+    job_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get comprehensive job details including product matches and HS codes
+    
+    - **job_id**: Processing job UUID
+    
+    Returns job information, product matches with confidence scores,
+    HS code assignments, and validation status for dashboard preview
+    """
+    try:
+        from sqlalchemy.orm import joinedload
+        from src.models.processing_job import ProcessingJob
+        from src.models.product_match import ProductMatch
+        
+        # Query job with product matches
+        job = db.query(ProcessingJob).options(
+            joinedload(ProcessingJob.product_matches)
+        ).filter(
+            ProcessingJob.id == job_id,
+            ProcessingJob.user_id == current_user.id
+        ).first()
+        
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail="Processing job not found or access denied"
+            )
+        
+        # Format job details
+        job_details = {
+            "id": str(job.id),
+            "input_file_name": job.input_file_name,
+            "status": job.status.value,
+            "country_schema": job.country_schema,
+            "input_file_size": job.input_file_size,
+            "credits_used": job.credits_used,
+            "processing_time_ms": job.processing_time_ms,
+            "total_products": job.total_products,
+            "successful_matches": job.successful_matches,
+            "average_confidence": float(job.average_confidence) if job.average_confidence else None,
+            "has_xml_output": job.output_xml_url is not None,
+            "xml_generation_status": job.xml_generation_status,
+            "error_message": job.error_message,
+            "created_at": job.created_at.isoformat(),
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None
+        }
+        
+        # Format product matches
+        product_matches = []
+        for match in job.product_matches:
+            product_match = {
+                "id": str(match.id),
+                "product_description": match.product_description,
+                "quantity": float(match.quantity),
+                "unit_of_measure": match.unit_of_measure,
+                "value": float(match.value),
+                "origin_country": match.origin_country,
+                "matched_hs_code": match.matched_hs_code,
+                "confidence_score": float(match.confidence_score),
+                "alternative_hs_codes": match.alternative_hs_codes or [],
+                "vector_store_reasoning": match.vector_store_reasoning,
+                "requires_manual_review": match.requires_manual_review,
+                "user_confirmed": match.user_confirmed,
+                "created_at": match.created_at.isoformat()
+            }
+            product_matches.append(product_match)
+        
+        # Calculate additional statistics
+        if product_matches:
+            high_confidence_matches = len([m for m in product_matches if m["confidence_score"] >= 0.8])
+            manual_review_required = len([m for m in product_matches if m["requires_manual_review"]])
+            user_confirmed_matches = len([m for m in product_matches if m["user_confirmed"]])
+        else:
+            high_confidence_matches = 0
+            manual_review_required = 0
+            user_confirmed_matches = 0
+        
+        statistics = {
+            "total_matches": len(product_matches),
+            "high_confidence_matches": high_confidence_matches,
+            "manual_review_required": manual_review_required,
+            "user_confirmed": user_confirmed_matches,
+            "success_rate": (job.successful_matches / job.total_products * 100) if job.total_products > 0 else 0
+        }
+        
+        return {
+            "job": job_details,
+            "product_matches": product_matches,
+            "statistics": statistics
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving job details: {str(e)}"
+        )
+
+
 @router.post("/process-with-hs-matching", response_model=dict)
 @limiter.limit(UPLOAD_RATE_LIMITS["per_minute"])
 @limiter.limit(UPLOAD_RATE_LIMITS["per_hour"]) 

@@ -41,6 +41,52 @@ interface User {
 - One-to-many with BillingTransaction
 - One-to-many with UserActivity
 
+## ValidationResponse
+
+**Purpose:** Represents the response from file validation API endpoint, providing detailed validation results and data quality metrics.
+
+**Key Attributes:**
+- valid: boolean - Overall validation status
+- errors: ValidationError[] - Array of validation errors with field and location details
+- warnings: string[] - Non-blocking validation warnings
+- total_rows: number - Total number of data rows processed
+- valid_rows: number - Number of rows that passed validation
+- summary: ValidationSummary - Aggregated validation statistics and quality metrics
+- previewData: any[] - Sample of processed data for user preview
+
+### TypeScript Interface
+```typescript
+interface ValidationError {
+  field: string;
+  error: string;
+  row?: number;
+  column?: string;
+}
+
+interface ValidationSummary {
+  total_errors: number;
+  total_warnings: number;
+  errors_by_field: Record<string, number>;
+  errors_by_type: Record<string, number>;
+  most_common_errors: string[];
+  data_quality_score: number;
+}
+
+interface ValidationResponse {
+  valid: boolean;
+  errors: ValidationError[];
+  warnings: string[];
+  total_rows: number;
+  valid_rows: number;
+  summary?: ValidationSummary;
+  previewData?: any[];
+}
+```
+
+### Relationships
+- Used by UploadValidation component for file validation display
+- Returned by POST /api/v1/processing/validate endpoint
+
 ## ProcessingJob
 
 **Purpose:** Represents a file processing request from CSV/XLSX upload through AI processing to XML output.
