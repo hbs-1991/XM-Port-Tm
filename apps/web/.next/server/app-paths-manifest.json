@@ -2,7 +2,5 @@
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
   "/auth/login/page": "app/auth/login/page.js",
-  "/auth/register/page": "app/auth/register/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/upload/page": "app/dashboard/upload/page.js"
+  "/dashboard/page": "app/dashboard/page.js"
 }

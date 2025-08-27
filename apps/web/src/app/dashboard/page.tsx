@@ -174,13 +174,15 @@ export default function DashboardPage() {
     return <DashboardSkeleton />
   }
 
-  // Show empty dashboard for new users with no data
-  const hasData = statistics && (
-    statistics.totalJobs > 0 || 
-    statistics.processingStats?.totalJobs > 0
+  // Show empty dashboard only for truly new users with no data (no statistics at all)
+  // If there's an error but we have fallback data, show the dashboard with fallback data
+  const shouldShowEmpty = !statistics || (
+    statistics.totalJobs === 0 && 
+    statistics.processingStats?.totalJobs === 0 &&
+    !error // Don't show empty if there's an error with fallback data
   )
   
-  if (!hasData && !error) {
+  if (shouldShowEmpty) {
     return <EmptyDashboard />
   }
 
