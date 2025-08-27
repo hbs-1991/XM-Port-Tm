@@ -328,25 +328,25 @@ export function AnalyticsCharts({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-blue-600">
-                {statistics?.processingStats.totalJobs || 0}
+                {statistics?.processingStats?.totalJobs || 0}
               </div>
               <div className="text-sm text-gray-600">Total Jobs</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-green-600">
-                {statistics?.processingStats.successRate.toFixed(1) || 0}%
+                {statistics?.processingStats?.successRate?.toFixed(1) || '0'}%
               </div>
               <div className="text-sm text-gray-600">Success Rate</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-purple-600">
-                {statistics?.averageConfidence.toFixed(1) || 0}%
+                {statistics?.averageConfidence?.toFixed(1) || '0'}%
               </div>
               <div className="text-sm text-gray-600">Avg. Confidence</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-orange-600">
-                {statistics?.monthlyUsage.creditsUsed || 0}
+                {statistics?.monthlyUsage?.creditsUsed || 0}
               </div>
               <div className="text-sm text-gray-600">Monthly Credits</div>
             </div>

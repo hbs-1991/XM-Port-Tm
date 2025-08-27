@@ -55,13 +55,13 @@ class UserAnalyticsService:
                 "monthlyUsage": monthly_usage,
                 "creditBalance": credit_balance,
                 "processingStats": {
-                    "totalJobs": processing_stats["total_jobs"],
-                    "completedJobs": processing_stats["completed_jobs"],
-                    "failedJobs": processing_stats["failed_jobs"],
-                    "successRate": processing_stats["success_rate"],
-                    "averageConfidence": processing_stats["average_confidence"],
-                    "totalProducts": processing_stats["total_products"],
-                    "successfulMatches": processing_stats["successful_matches"]
+                    "total_jobs": processing_stats["total_jobs"],
+                    "completed_jobs": processing_stats["completed_jobs"],
+                    "failed_jobs": processing_stats["failed_jobs"],
+                    "success_rate": processing_stats["success_rate"],
+                    "average_confidence": processing_stats["average_confidence"],
+                    "total_products": processing_stats["total_products"],
+                    "successful_matches": processing_stats["successful_matches"]
                 }
             }
 

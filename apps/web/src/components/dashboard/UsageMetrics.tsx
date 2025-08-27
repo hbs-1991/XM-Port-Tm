@@ -174,7 +174,7 @@ export function UsageMetrics({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Jobs"
-          value={processingStats.totalJobs}
+          value={processingStats?.totalJobs || 0}
           subtitle="All time"
           icon={BarChart3}
           color="blue"
@@ -182,24 +182,24 @@ export function UsageMetrics({
         
         <MetricCard
           title="Success Rate"
-          value={`${processingStats.successRate.toFixed(1)}%`}
+          value={`${processingStats?.successRate?.toFixed(1) || '0'}%`}
           subtitle="Processing success"
           icon={CheckCircle}
-          color={processingStats.successRate > 90 ? 'green' : processingStats.successRate > 75 ? 'yellow' : 'red'}
+          color={(processingStats?.successRate || 0) > 90 ? 'green' : (processingStats?.successRate || 0) > 75 ? 'yellow' : 'red'}
         />
         
         <MetricCard
           title="Avg. Confidence"
-          value={`${displayStats.averageConfidence.toFixed(1)}%`}
+          value={`${displayStats?.averageConfidence?.toFixed(1) || '0'}%`}
           subtitle="AI matching confidence"
           icon={Target}
-          color={displayStats.averageConfidence > 85 ? 'green' : displayStats.averageConfidence > 70 ? 'yellow' : 'red'}
+          color={(displayStats?.averageConfidence || 0) > 85 ? 'green' : (displayStats?.averageConfidence || 0) > 70 ? 'yellow' : 'red'}
         />
         
         <MetricCard
           title="This Month"
-          value={monthlyUsage.jobsCompleted}
-          subtitle={`${monthlyUsage.month} ${monthlyUsage.year}`}
+          value={monthlyUsage?.jobsCompleted || 0}
+          subtitle={`${monthlyUsage?.month || ''} ${monthlyUsage?.year || ''}`}
           icon={Calendar}
           color="purple"
         />
@@ -226,7 +226,7 @@ export function UsageMetrics({
                   <span className="text-sm text-gray-600">Completed Jobs</span>
                 </div>
                 <span className="font-semibold text-green-600">
-                  {processingStats.completedJobs.toLocaleString()}
+                  {(processingStats?.completedJobs || 0).toLocaleString()}
                 </span>
               </div>
               
@@ -236,7 +236,7 @@ export function UsageMetrics({
                   <span className="text-sm text-gray-600">Failed Jobs</span>
                 </div>
                 <span className="font-semibold text-red-600">
-                  {processingStats.failedJobs.toLocaleString()}
+                  {(processingStats?.failedJobs || 0).toLocaleString()}
                 </span>
               </div>
               
@@ -246,7 +246,7 @@ export function UsageMetrics({
                   <span className="text-sm text-gray-600">Total Products</span>
                 </div>
                 <span className="font-semibold">
-                  {processingStats.totalProducts.toLocaleString()}
+                  {(processingStats?.totalProducts || 0).toLocaleString()}
                 </span>
               </div>
               
@@ -256,7 +256,7 @@ export function UsageMetrics({
                   <span className="text-sm text-gray-600">Successful Matches</span>
                 </div>
                 <span className="font-semibold text-green-600">
-                  {processingStats.successfulMatches.toLocaleString()}
+                  {(processingStats?.successfulMatches || 0).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -266,15 +266,15 @@ export function UsageMetrics({
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-600">Match Success Rate</span>
                 <span className="font-medium">
-                  {processingStats.totalProducts > 0 
-                    ? ((processingStats.successfulMatches / processingStats.totalProducts) * 100).toFixed(1)
+                  {(processingStats?.totalProducts || 0) > 0 
+                    ? (((processingStats?.successfulMatches || 0) / (processingStats?.totalProducts || 1)) * 100).toFixed(1)
                     : 0
                   }%
                 </span>
               </div>
               <Progress 
-                value={processingStats.totalProducts > 0 
-                  ? (processingStats.successfulMatches / processingStats.totalProducts) * 100
+                value={(processingStats?.totalProducts || 0) > 0 
+                  ? ((processingStats?.successfulMatches || 0) / (processingStats?.totalProducts || 1)) * 100
                   : 0
                 } 
                 className="h-2"
@@ -291,21 +291,21 @@ export function UsageMetrics({
               Monthly Overview
             </CardTitle>
             <CardDescription>
-              {monthlyUsage.month} {monthlyUsage.year} performance summary
+              {monthlyUsage?.month || ''} {monthlyUsage?.year || ''} performance summary
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {monthlyUsage.creditsUsed.toLocaleString()}
+                  {monthlyUsage?.creditsUsed?.toLocaleString() || '0'}
                 </div>
                 <div className="text-sm text-gray-600">Credits Used</div>
               </div>
               
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {monthlyUsage.filesProcessed.toLocaleString()}
+                  {monthlyUsage?.filesProcessed?.toLocaleString() || '0'}
                 </div>
                 <div className="text-sm text-gray-600">Files Processed</div>
               </div>
@@ -328,9 +328,9 @@ export function UsageMetrics({
                   </TooltipProvider>
                 </div>
                 <span className="font-semibold">
-                  {monthlyUsage.averageProcessingTime > 60000 
-                    ? `${(monthlyUsage.averageProcessingTime / 60000).toFixed(1)}m`
-                    : `${(monthlyUsage.averageProcessingTime / 1000).toFixed(1)}s`
+                  {(monthlyUsage?.averageProcessingTime || 0) > 60000 
+                    ? `${((monthlyUsage?.averageProcessingTime || 0) / 60000).toFixed(1)}m`
+                    : `${((monthlyUsage?.averageProcessingTime || 0) / 1000).toFixed(1)}s`
                   }
                 </span>
               </div>
@@ -338,7 +338,7 @@ export function UsageMetrics({
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Jobs This Month</span>
                 <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                  {monthlyUsage.jobsCompleted}
+                  {monthlyUsage?.jobsCompleted || 0}
                 </Badge>
               </div>
             </div>
