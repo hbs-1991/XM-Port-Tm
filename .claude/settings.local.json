@@ -146,7 +146,8 @@
       "mcp__playwright__browser_evaluate",
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_resize",
-      "mcp__playwright__browser_close"
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_wait_for"
     ],
     "deny": [],
     "ask": []

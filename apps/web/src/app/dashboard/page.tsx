@@ -11,6 +11,8 @@ import { Badge } from '@/components/shared/ui/badge'
 import CreditBalance from '@/components/dashboard/CreditBalance'
 import UsageMetrics from '@/components/dashboard/UsageMetrics'
 import AnalyticsCharts from '@/components/dashboard/AnalyticsCharts'
+import { EmptyDashboard, EmptyRecentJobs } from '@/components/dashboard/EmptyStates'
+import { DashboardSkeleton } from '@/components/dashboard/SkeletonLoaders'
 import {
   Upload,
   FileText,
@@ -167,6 +169,21 @@ export default function DashboardPage() {
     )
   }
 
+  // Show loading skeleton while fetching data
+  if (loading) {
+    return <DashboardSkeleton />
+  }
+
+  // Show empty dashboard for new users with no data
+  const hasData = statistics && (
+    statistics.totalJobs > 0 || 
+    statistics.processingStats?.totalJobs > 0
+  )
+  
+  if (!hasData && !error) {
+    return <EmptyDashboard />
+  }
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
@@ -254,35 +271,35 @@ export default function DashboardPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {recentJobs.map((job) => (
-              <div
-                key={job.id}
-                className="flex items-center justify-between rounded-lg border p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center space-x-4">
-                  {getStatusIcon(job.status)}
-                  <div>
-                    <p className="text-sm font-medium">{job.fileName}</p>
-                    <p className="text-xs text-gray-500">{job.date}</p>
+          {recentJobs.length > 0 ? (
+            <div className="space-y-4">
+              {recentJobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="flex items-center justify-between rounded-lg border p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center space-x-4">
+                    {getStatusIcon(job.status)}
+                    <div>
+                      <p className="text-sm font-medium">{job.fileName}</p>
+                      <p className="text-xs text-gray-500">{job.date}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{job.products} products</p>
+                      {job.confidence > 0 && (
+                        <p className="text-xs text-gray-500">
+                          {job.confidence}% confidence
+                        </p>
+                      )}
+                    </div>
+                    {getStatusBadge(job.status)}
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{job.products} products</p>
-                    {job.confidence > 0 && (
-                      <p className="text-xs text-gray-500">
-                        {job.confidence}% confidence
-                      </p>
-                    )}
-                  </div>
-                  {getStatusBadge(job.status)}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {recentJobs.length === 0 && (
+              ))}
+            </div>
+          ) : (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">No processing jobs yet</p>

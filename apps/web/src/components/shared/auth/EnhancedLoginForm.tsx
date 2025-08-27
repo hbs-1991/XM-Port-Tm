@@ -75,6 +75,16 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
     )
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    // Handle Escape key to clear focused field
+    if (e.key === 'Escape') {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT') {
+        target.blur()
+      }
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     clearError()
@@ -82,7 +92,14 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
     // Mark all fields as touched
     setTouched({ email: true, password: true })
     
-    if (!isFormValid()) return
+    if (!isFormValid()) {
+      // Focus first invalid field for accessibility
+      const firstErrorField = document.querySelector('[aria-invalid="true"]') as HTMLInputElement
+      if (firstErrorField) {
+        firstErrorField.focus()
+      }
+      return
+    }
     
     const success = await login(formData.email, formData.password)
     
@@ -125,7 +142,7 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="space-y-4" noValidate>
             <EnhancedInput
               icon={Mail}
               type="email"
@@ -161,7 +178,10 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
             )}
 
             <div className="flex items-center justify-between pt-2">
-              <label className="flex items-center space-x-2 cursor-pointer group">
+              <label 
+                className="flex items-center space-x-2 cursor-pointer group relative"
+                title="Keep me signed in for 30 days on this device"
+              >
                 <input
                   type="checkbox"
                   className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition-colors"
@@ -169,10 +189,16 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
                 <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
                   Remember me
                 </span>
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-0 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-10">
+                  Keep me signed in for 30 days
+                  <div className="absolute top-full left-3 w-2 h-2 bg-gray-800 transform rotate-45 -mt-1"></div>
+                </div>
               </label>
               <Link
                 href="/auth/forgot-password"
                 className="text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                aria-label="Reset your password via email"
               >
                 Forgot password?
               </Link>

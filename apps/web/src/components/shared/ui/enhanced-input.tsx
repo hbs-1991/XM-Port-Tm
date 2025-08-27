@@ -47,6 +47,8 @@ const EnhancedInput = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
+            aria-invalid={error ? 'true' : 'false'}
+            aria-describedby={error ? `${props.id || props.name}-error` : undefined}
             {...props}
           />
           
@@ -62,10 +64,15 @@ const EnhancedInput = React.forwardRef<HTMLInputElement, InputProps>(
         </div>
         
         {(error || helperText) && (
-          <p className={cn(
-            "mt-1.5 text-sm animate-in fade-in-50 slide-in-from-top-1",
-            error ? "text-red-600" : "text-gray-500"
-          )}>
+          <p 
+            id={`${props.id || props.name}-error`}
+            className={cn(
+              "mt-1.5 text-sm animate-in fade-in-50 slide-in-from-top-1",
+              error ? "text-red-600" : "text-gray-500"
+            )}
+            role={error ? "alert" : undefined}
+            aria-live={error ? "polite" : undefined}
+          >
             {error || helperText}
           </p>
         )}

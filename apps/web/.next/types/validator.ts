@@ -47,6 +47,12 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 }
 
 
+// Validate ../../src/app/auth/forgot-password/page.tsx
+{
+  const handler = {} as typeof import("../../src/app/auth/forgot-password/page.js")
+  handler satisfies AppPageConfig<"/auth/forgot-password">
+}
+
 // Validate ../../src/app/auth/login/page.tsx
 {
   const handler = {} as typeof import("../../src/app/auth/login/page.js")

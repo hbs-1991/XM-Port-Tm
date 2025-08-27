@@ -134,38 +134,44 @@ export function AnalyticsCharts({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Chart Navigation */}
-      <div className="flex space-x-2">
+      {/* Chart Navigation - Responsive */}
+      <div className="flex flex-wrap gap-2 sm:space-x-2">
         <Button 
           variant={activeTab === 'daily' ? 'default' : 'outline'}
           onClick={() => setActiveTab('daily')}
           size="sm"
+          className="flex-1 sm:flex-none min-w-0"
         >
-          <Calendar className="h-4 w-4 mr-2" />
-          Daily Usage
+          <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Daily Usage</span>
+          <span className="sm:hidden">Daily</span>
         </Button>
         <Button 
           variant={activeTab === 'monthly' ? 'default' : 'outline'}
           onClick={() => setActiveTab('monthly')}
           size="sm"
+          className="flex-1 sm:flex-none min-w-0"
         >
-          <TrendingUp className="h-4 w-4 mr-2" />
-          Monthly Trends
+          <TrendingUp className="h-4 w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Monthly Trends</span>
+          <span className="sm:hidden">Monthly</span>
         </Button>
         <Button 
           variant={activeTab === 'performance' ? 'default' : 'outline'}
           onClick={() => setActiveTab('performance')}
           size="sm"
+          className="flex-1 sm:flex-none min-w-0"
         >
-          <Activity className="h-4 w-4 mr-2" />
-          Performance
+          <Activity className="h-4 w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Performance</span>
+          <span className="sm:hidden">Perf</span>
         </Button>
       </div>
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Charts Grid - Improved Mobile Layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
         {/* Primary Chart */}
-        <Card className="lg:col-span-2">
+        <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
@@ -180,16 +186,20 @@ export function AnalyticsCharts({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250} className="sm:!h-[300px]">
               {activeTab === 'daily' ? (
                 <BarChart data={sampleDailyUsage}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
                     tickFormatter={formatDate}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 10 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                    interval={0}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Bar dataKey="creditsUsed" fill="#3b82f6" name="Credits Used" />
@@ -198,8 +208,8 @@ export function AnalyticsCharts({
               ) : activeTab === 'monthly' ? (
                 <LineChart data={sampleMonthlyTrends}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Line 
@@ -230,9 +240,9 @@ export function AnalyticsCharts({
                   <XAxis 
                     dataKey="hour" 
                     tickFormatter={formatHour}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 10 }}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Bar dataKey="jobCount" fill="#8b5cf6" name="Job Count" />
@@ -254,7 +264,7 @@ export function AnalyticsCharts({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={200} className="sm:!h-[250px]">
               <PieChart>
                 <Pie
                   data={statusDistribution}
@@ -287,17 +297,21 @@ export function AnalyticsCharts({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={200} className="sm:!h-[250px]">
               <LineChart data={sampleDailyUsage}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="date" 
                   tickFormatter={formatDate}
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 9 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={50}
                 />
                 <YAxis 
                   domain={[80, 95]}
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 9 }}
+                  width={40}
                 />
                 <Tooltip 
                   formatter={(value) => [`${value}%`, 'Confidence']}
@@ -325,30 +339,30 @@ export function AnalyticsCharts({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-blue-600">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-center">
+            <div className="p-2 sm:p-0">
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">
                 {statistics?.processingStats?.totalJobs || 0}
               </div>
-              <div className="text-sm text-gray-600">Total Jobs</div>
+              <div className="text-xs sm:text-sm text-gray-600">Total Jobs</div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-green-600">
+            <div className="p-2 sm:p-0">
+              <div className="text-xl sm:text-2xl font-bold text-green-600">
                 {statistics?.processingStats?.successRate?.toFixed(1) || '0'}%
               </div>
-              <div className="text-sm text-gray-600">Success Rate</div>
+              <div className="text-xs sm:text-sm text-gray-600">Success Rate</div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-purple-600">
+            <div className="p-2 sm:p-0">
+              <div className="text-xl sm:text-2xl font-bold text-purple-600">
                 {statistics?.averageConfidence?.toFixed(1) || '0'}%
               </div>
-              <div className="text-sm text-gray-600">Avg. Confidence</div>
+              <div className="text-xs sm:text-sm text-gray-600">Avg. Confidence</div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-orange-600">
+            <div className="p-2 sm:p-0">
+              <div className="text-xl sm:text-2xl font-bold text-orange-600">
                 {statistics?.monthlyUsage?.creditsUsed || 0}
               </div>
-              <div className="text-sm text-gray-600">Monthly Credits</div>
+              <div className="text-xs sm:text-sm text-gray-600">Monthly Credits</div>
             </div>
           </div>
         </CardContent>

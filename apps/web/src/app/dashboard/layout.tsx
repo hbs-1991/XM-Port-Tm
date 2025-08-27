@@ -33,6 +33,9 @@ import { Avatar, AvatarFallback } from '@/components/shared/ui/ui/avatar'
 import { Badge } from '@/components/shared/ui/badge'
 import NotificationCenter from '@/components/shared/NotificationCenter'
 import { useProcessingUpdates } from '@/hooks/useProcessingUpdates'
+import MobileNavigation from '@/components/dashboard/MobileNavigation'
+import BreadcrumbNavigation from '@/components/dashboard/BreadcrumbNavigation'
+import FloatingActionButton from '@/components/dashboard/FloatingActionButton'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -163,13 +166,12 @@ export default function DashboardLayout({
           <header className="sticky top-0 z-30 bg-white shadow">
             <div className="px-4 sm:px-6 lg:px-8">
               <div className="flex h-16 items-center justify-between">
-                {/* Mobile menu button */}
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="text-gray-500 hover:text-gray-700 lg:hidden"
-                >
-                  <Menu className="h-6 w-6" />
-                </button>
+                {/* Mobile Navigation */}
+                <MobileNavigation 
+                  user={user}
+                  onSignOut={handleSignOut}
+                  isLoggingOut={isLoggingOut}
+                />
 
                 {/* Credit balance display */}
                 <div className="flex items-center space-x-4">
@@ -249,7 +251,10 @@ export default function DashboardLayout({
 
           {/* Page content */}
           <main className="flex-1">
-            <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+            <div className="px-4 py-6 sm:px-6 lg:px-8">
+              <BreadcrumbNavigation />
+              {children}
+            </div>
           </main>
         </div>
 
@@ -260,6 +265,9 @@ export default function DashboardLayout({
           isConnected={isConnected}
           connectionStatus={connectionStatus}
         />
+        
+        {/* Floating Action Button */}
+        <FloatingActionButton />
       </div>
     </AuthGuard>
   )
