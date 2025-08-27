@@ -10,8 +10,11 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Alert, AlertDescription } from '@/components/shared/ui/alert';
 import { Upload, FileText, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { uploadFile } from '@/services/processing';
+import hsMatchingService from '@/services/hsMatching';
+import xmlGenerationService from '@/services/xmlGeneration';
 import { ProcessingJob, ProcessingStatus } from '@shared/types';
 import { FilePreview } from './FilePreview';
+import { EditableSpreadsheet } from './EditableSpreadsheet';
 import { UploadProgress } from './UploadProgress';
 import { UploadValidation } from './UploadValidation';
 import { performClientValidation, validateCSVHeaders } from './validation';
@@ -31,6 +34,8 @@ interface UploadedFile {
   job?: ProcessingJob;
   previewData?: any[];
   validationResult?: any;
+  xmlGenerating?: boolean;
+  xmlDownloadUrl?: string;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -213,6 +218,91 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
     });
   };
 
+  const initiateHSMatching = async (jobId: string) => {
+    try {
+      // Get uploaded file data to create batch matching request
+      const file = uploadedFiles.find(f => f.job?.id === jobId);
+      if (!file?.previewData) {
+        onError?.('No data available for HS matching');
+        return;
+      }
+
+      // Create batch request from preview data
+      const products = file.previewData.map((row: any) => ({
+        product_description: row['Product Description'] || '',
+        country: countrySchema,
+        include_alternatives: true,
+        confidence_threshold: 0.7
+      }));
+
+      const result = await hsMatchingService.matchBatchProducts({
+        products,
+        country: countrySchema
+      });
+      
+      console.log('HS matching completed:', result);
+      
+      // Update the data with HS codes
+      const updatedData = file.previewData.map((row: any, index: number) => {
+        const match = result[index];
+        return {
+          ...row,
+          'HS Code': match?.primary_match?.hs_code || 'No match',
+          'HS Description': match?.primary_match?.code_description || '',
+          'Confidence': match?.primary_match?.confidence ? `${(match.primary_match.confidence * 100).toFixed(1)}%` : ''
+        };
+      });
+      
+      // Update the file data
+      setUploadedFiles(prev => 
+        prev.map(f => 
+          f.id === file.id 
+            ? { ...f, previewData: updatedData }
+            : f
+        )
+      );
+      
+    } catch (error) {
+      console.error('Error starting HS matching:', error);
+      onError?.('Failed to start HS code matching: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
+  const initiateXMLGeneration = async (jobId: string) => {
+    try {
+      const result = await xmlGenerationService.generateXML(jobId, {
+        country_schema: countrySchema,
+        include_metadata: true,
+        validate_output: true
+      });
+      
+      console.log('XML generation started:', result);
+      
+      if (result.success) {
+        // Update the file status to show XML is being generated
+        setUploadedFiles(prev => 
+          prev.map(f => 
+            f.job?.id === jobId 
+              ? { ...f, xmlGenerating: true, xmlDownloadUrl: result.download_url }
+              : f
+          )
+        );
+        
+        // Show success message
+        onUploadComplete?.({
+          ...result,
+          message: 'XML generation started successfully'
+        } as any);
+      } else {
+        throw new Error(result.error_message || 'XML generation failed');
+      }
+      
+    } catch (error) {
+      console.error('Error starting XML generation:', error);
+      onError?.('Failed to start XML generation: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Upload Area */}
@@ -227,7 +317,7 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
           <div
             {...getRootProps()}
             className={`
-              border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+              border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors max-w-md mx-auto
               ${isDragActive || dragActive 
                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
                 : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
@@ -235,14 +325,14 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
             `}
           >
             <input {...getInputProps()} ref={fileInputRef} />
-            <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <Upload className="w-8 h-8 mx-auto mb-3 text-gray-400" />
+            <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
               {isDragActive || dragActive 
                 ? 'Drop your file here' 
                 : 'Drag & drop your file here'
               }
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
               or click to select a file
             </p>
             <div className="flex flex-wrap justify-center gap-2 mb-4">
@@ -377,12 +467,53 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
                       </Alert>
                     )}
 
-                    {/* File Preview */}
+                    {/* File Preview and Editable Spreadsheet */}
                     {uploadedFile.previewData && uploadedFile.status === 'completed' && (
-                      <FilePreview 
-                        data={uploadedFile.previewData}
-                        fileName={uploadedFile.file.name}
-                      />
+                      <div className="mt-4">
+                        <EditableSpreadsheet 
+                          data={uploadedFile.previewData}
+                          fileName={uploadedFile.file.name}
+                          jobId={uploadedFile.job?.id}
+                          onDataChange={(newData) => {
+                            setUploadedFiles(prev => 
+                              prev.map(f => 
+                                f.id === uploadedFile.id 
+                                  ? { ...f, previewData: newData }
+                                  : f
+                              )
+                            );
+                          }}
+                        />
+                        {uploadedFile.job && (
+                          <div className="flex gap-3 mt-4">
+                            <Button
+                              onClick={() => initiateHSMatching(uploadedFile.job?.id!)}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700"
+                              disabled={!uploadedFile.job}
+                            >
+                              Start HS Code Matching
+                            </Button>
+                            <Button
+                              onClick={() => initiateXMLGeneration(uploadedFile.job?.id!)}
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              disabled={!uploadedFile.job || uploadedFile.xmlGenerating}
+                            >
+                              {uploadedFile.xmlGenerating ? 'Generating XML...' : 'Generate XML'}
+                            </Button>
+                          </div>
+                        )}
+                        {uploadedFile.xmlDownloadUrl && (
+                          <div className="mt-2">
+                            <Button
+                              onClick={() => window.open(uploadedFile.xmlDownloadUrl, '_blank')}
+                              variant="outline"
+                              className="w-full"
+                            >
+                              Download XML File
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
