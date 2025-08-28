@@ -317,52 +317,146 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
           <div
             {...getRootProps()}
             className={`
-              border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors max-w-md mx-auto
+              relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-300 ease-in-out transform
               ${isDragActive || dragActive 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
-                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                ? 'border-primary bg-primary/5 scale-[1.02] shadow-md' 
+                : 'border-border hover:border-primary/50 hover:bg-muted/30'
               }
+              ${uploadedFiles.length > 0 ? 'opacity-75' : ''}
             `}
           >
             <input {...getInputProps()} ref={fileInputRef} />
-            <Upload className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-            <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {isDragActive || dragActive 
-                ? 'Drop your file here' 
-                : 'Drag & drop your file here'
-              }
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-              or click to select a file
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 mb-4">
-              <Badge variant="secondary">CSV</Badge>
-              <Badge variant="secondary">XLSX</Badge>
-              <Badge variant="secondary">Max 10MB</Badge>
+            
+            {/* Animated upload icon */}
+            <div className={`mb-4 transition-transform duration-300 ${isDragActive || dragActive ? 'scale-110' : ''}`}>
+              <Upload className={`w-12 h-12 mx-auto transition-colors ${
+                isDragActive || dragActive ? 'text-primary' : 'text-muted-foreground'
+              }`} />
             </div>
-            <Button type="button" variant="outline" size="sm">
-              Choose File
-            </Button>
+            
+            <div className="space-y-3">
+              <div>
+                <p className={`text-lg font-medium transition-colors ${
+                  isDragActive || dragActive 
+                    ? 'text-primary' 
+                    : 'text-foreground'
+                }`}>
+                  {isDragActive || dragActive 
+                    ? 'Drop your file here' 
+                    : 'Drag & drop your file here'
+                  }
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  or click anywhere in this area to browse files
+                </p>
+              </div>
+              
+              {/* File format badges */}
+              <div className="flex flex-wrap justify-center gap-2">
+                {['CSV', 'XLSX', 'XLS'].map(format => (
+                  <Badge key={format} variant="secondary" className="text-xs">
+                    {format}
+                  </Badge>
+                ))}
+                <Badge variant="outline" className="text-xs">
+                  Max 10MB
+                </Badge>
+              </div>
+              
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                className="mt-4 hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                Choose File
+              </Button>
+            </div>
+
+            {/* Visual drag indicator */}
+            {(isDragActive || dragActive) && (
+              <div className="absolute inset-0 border-2 border-primary rounded-lg bg-primary/5 flex items-center justify-center">
+                <div className="text-center">
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-primary animate-bounce" />
+                  <p className="text-primary font-medium">Drop to upload</p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* File Requirements */}
-          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2">
-              Required Columns:
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {[
-                'Product Description',
-                'Quantity', 
-                'Unit',
-                'Value',
-                'Origin Country',
-                'Unit Price'
-              ].map(column => (
-                <Badge key={column} variant="outline" className="text-xs">
-                  {column}
-                </Badge>
-              ))}
+          {/* File Requirements and Template */}
+          <div className="mt-6 space-y-4">
+            {/* Template Download */}
+            <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <div>
+                <h4 className="font-medium text-sm text-foreground mb-1">
+                  Need a template?
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Download our CSV template with all required columns
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // Create and download template CSV
+                  const headers = [
+                    'Product Description',
+                    'Quantity',
+                    'Unit',
+                    'Value',
+                    'Origin Country', 
+                    'Unit Price'
+                  ];
+                  const csvContent = headers.join(',') + '\n' + 
+                    'Sample Product Description,100,KG,1000.00,US,10.00\n';
+                  const blob = new Blob([csvContent], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'trade-data-template.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                }}
+                className="flex-shrink-0"
+              >
+                Download Template
+              </Button>
+            </div>
+
+            {/* Required Columns */}
+            <div className="p-4 bg-muted rounded-lg">
+              <h4 className="font-medium text-sm text-foreground mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Required Columns
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {[
+                  { name: 'Product Description', required: true },
+                  { name: 'Quantity', required: true },
+                  { name: 'Unit', required: true },
+                  { name: 'Value', required: true },
+                  { name: 'Origin Country', required: true },
+                  { name: 'Unit Price', required: true }
+                ].map(column => (
+                  <div key={column.name} className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      column.required ? 'bg-red-500' : 'bg-gray-400'
+                    }`} />
+                    <Badge variant="outline" className="text-xs flex-1 justify-start">
+                      {column.name}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-red-500" />
+                Required field
+              </div>
             </div>
           </div>
         </CardContent>

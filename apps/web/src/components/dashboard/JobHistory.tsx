@@ -37,7 +37,9 @@ import {
 import { format } from 'date-fns'
 import { ProcessingJob, ProcessingStatus } from '@shared/types/processing'
 import { useProcessingUpdates, ProcessingUpdate } from '@/hooks/useProcessingUpdates'
+import { useAuth } from '@/hooks/useAuth'
 import { JobDetails } from './JobDetails'
+import { apiCallWithRetry, RetryStatus } from '@/services/errorRecovery'
 
 interface JobHistoryProps {
   className?: string
@@ -95,6 +97,7 @@ const statusConfig = {
 }
 
 const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
+  const { session } = useAuth()
   const [jobs, setJobs] = useState<ProcessingJob[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -128,40 +131,60 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
   const { lastMessage, isConnected } = useProcessingUpdates()
 
   const fetchJobs = async (page: number = 1, filters = appliedFilters) => {
+    const operationId = `fetch-jobs-${page}-${JSON.stringify(filters)}`
+    
     try {
       setLoading(true)
       setError(null)
       
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '50'
-      })
-      
-      if (filters.search) params.append('search', filters.search)
-      if (filters.status) params.append('status', filters.status)
-      if (filters.date_from) params.append('date_from', filters.date_from)
-      if (filters.date_to) params.append('date_to', filters.date_to)
-      
-      const response = await fetch(`/api/proxy/processing/jobs?${params}`, {
-        headers: {
-          'Content-Type': 'application/json'
+      const result = await apiCallWithRetry(
+        operationId,
+        async () => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            limit: '50'
+          })
+          
+          if (filters.search) params.append('search', filters.search)
+          if (filters.status) params.append('status', filters.status)
+          if (filters.date_from) params.append('date_from', filters.date_from)
+          if (filters.date_to) params.append('date_to', filters.date_to)
+          
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json'
+          }
+          
+          // Add authorization header if session exists
+          if (session?.accessToken) {
+            headers['Authorization'] = `Bearer ${session.accessToken}`
+          }
+          
+          const response = await fetch(`/api/proxy/api/v1/processing/jobs?${params}`, {
+            headers,
+            credentials: 'include'
+          })
+          
+          if (!response.ok) {
+            const error: any = new Error(`HTTP ${response.status}: ${response.statusText}`)
+            error.status = response.status
+            throw error
+          }
+          
+          return await response.json()
         },
-        credentials: 'include'
-      })
+        {
+          maxRetries: 3,
+          baseDelay: 1000,
+          maxDelay: 10000
+        }
+      )
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to fetch processing jobs')
-      }
-      
-      const data: ProcessingJobsResponse = await response.json()
-      
-      setJobs(data.jobs)
-      setCurrentPage(data.pagination.page)
-      setTotalPages(data.pagination.total_pages)
-      setTotalCount(data.pagination.total_count)
-      setHasNext(data.pagination.has_next)
-      setHasPrev(data.pagination.has_prev)
+      setJobs(result.jobs)
+      setCurrentPage(result.pagination.page)
+      setTotalPages(result.pagination.total_pages)
+      setTotalCount(result.pagination.total_count)
+      setHasNext(result.pagination.has_next)
+      setHasPrev(result.pagination.has_prev)
       
     } catch (err) {
       console.error('Error fetching jobs:', err)
@@ -429,6 +452,16 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
             )}
           </div>
         </div>
+        
+        {/* Show retry status if retrying */}
+        <RetryStatus 
+          operationId={`fetch-jobs-${currentPage}-${JSON.stringify(appliedFilters)}`}
+          onCancel={() => {
+            setLoading(false)
+            setError('Request cancelled by user')
+          }}
+          className="mt-4"
+        />
         <div className="flex flex-col gap-4 mt-4">
           {/* Search and Filters */}
           <div className="flex flex-col md:flex-row gap-4">

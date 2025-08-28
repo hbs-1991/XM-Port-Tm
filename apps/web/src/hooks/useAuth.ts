@@ -19,7 +19,8 @@ export function useAuth() {
     logout,
     logoutAll,
     register,
-    clearError
+    clearError,
+    refreshSession
   } = useAuthStore()
 
   // Sync NextAuth session with Zustand store
@@ -48,6 +49,10 @@ export function useAuth() {
     return hasAnyRole(['ADMIN', 'PROJECT_OWNER'])
   }
 
+  const refreshUser = async (): Promise<void> => {
+    return refreshSession()
+  }
+
   return {
     // State
     user,
@@ -62,6 +67,7 @@ export function useAuth() {
     logoutAll,
     register,
     clearError,
+    refreshUser,
     
     // Role helpers
     hasRole,

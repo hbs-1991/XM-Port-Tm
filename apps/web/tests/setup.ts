@@ -63,3 +63,15 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }))
+
+// Mock next-auth
+jest.mock('next-auth/react', () => ({
+  useSession: jest.fn(() => ({
+    data: null,
+    status: 'loading'
+  })),
+  SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  getSession: jest.fn(),
+}))

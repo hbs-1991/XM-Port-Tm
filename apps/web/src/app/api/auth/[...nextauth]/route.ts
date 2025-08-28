@@ -76,7 +76,7 @@ const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'strict',
         path: '/',
-        secure: true, // Always use secure cookies
+        secure: process.env.NODE_ENV === 'production', // Secure only in production
         maxAge: 15 * 60, // 15 minutes
       }
     },
@@ -86,7 +86,7 @@ const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'strict',
         path: '/',
-        secure: true, // Always use secure cookies
+        secure: process.env.NODE_ENV === 'production', // Secure only in production
       }
     },
     csrfToken: {
@@ -95,7 +95,7 @@ const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'strict',
         path: '/',
-        secure: true, // Always use secure cookies
+        secure: process.env.NODE_ENV === 'production', // Secure only in production
       }
     }
   },
@@ -122,12 +122,24 @@ const authOptions: NextAuthOptions = {
             token.accessTokenExpires = now + (15 * 60) // 15 minutes
           } else {
             // If refresh fails, clear all token data to force re-authentication
-            return {}
+            // but preserve the basic token structure
+            return {
+              ...token,
+              accessToken: null,
+              refreshToken: null,
+              accessTokenExpires: null
+            }
           }
         } catch (error) {
           console.error('Token refresh failed:', error)
-          // Clear all token data to force re-authentication
-          return {}
+          // Return token without access tokens to force re-authentication
+          // but preserve the basic token structure
+          return {
+            ...token,
+            accessToken: null,
+            refreshToken: null,
+            accessTokenExpires: null
+          }
         }
       }
 
@@ -136,15 +148,24 @@ const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Check if we have valid token data
       if (!token.userId || !token.accessToken) {
-        // If token is invalid or missing, return null to force re-authentication
-        return null
+        // Create minimal invalid session that will be handled by the frontend
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            id: '',
+          },
+          accessToken: '',
+          refreshToken: '',
+          expires: new Date(0).toISOString() // Expired immediately
+        }
       }
 
       // Send properties to the client
-      session.user.id = token.userId as string
-      session.user.role = token.role as UserRole
-      session.accessToken = token.accessToken as string
-      session.refreshToken = token.refreshToken as string
+      session.user.id = token.userId
+      session.user.role = token.role as any
+      session.accessToken = token.accessToken
+      session.refreshToken = token.refreshToken || ''
       
       // Fetch full user data for session
       try {
@@ -160,18 +181,36 @@ const authOptions: NextAuthOptions = {
           session.user = {
             ...session.user,
             ...userData,
-            accessToken: token.accessToken as string,
-            refreshToken: token.refreshToken as string,
+            accessToken: token.accessToken,
+            refreshToken: token.refreshToken || '',
           }
         } else if (response.status === 401 || response.status === 404) {
-          // User no longer exists or token is invalid
-          console.log('User profile fetch failed, forcing re-authentication')
-          return null
+          // User no longer exists or token is invalid - return expired session
+          console.log('User profile fetch failed, returning expired session')
+          return {
+            ...session,
+            user: {
+              ...session.user,
+              id: '',
+            },
+            accessToken: '',
+            refreshToken: '',
+            expires: new Date(0).toISOString()
+          }
         }
       } catch (error) {
         console.error('Failed to fetch user profile:', error)
-        // On fetch error, return null to force re-authentication
-        return null
+        // On fetch error, return expired session
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            id: '',
+          },
+          accessToken: '',
+          refreshToken: '',
+          expires: new Date(0).toISOString()
+        }
       }
       
       return session

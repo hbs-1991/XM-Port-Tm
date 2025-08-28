@@ -188,18 +188,18 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Welcome back, {user?.firstName}!
+      {/* Welcome Section - Responsive Typography */}
+      <div className="space-y-2">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
+          Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
           Here's an overview of your processing activity and account statistics
         </p>
       </div>
 
-      {/* Credit Balance and Upload Section */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Credit Balance and Quick Actions - Mobile First */}
+      <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <CreditBalance 
             creditBalance={statistics?.creditBalance}
@@ -207,25 +207,28 @@ export default function DashboardPage() {
           />
         </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        {/* Quick Upload Card - Responsive */}
+        <Card className="lg:self-start">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Upload className="h-5 w-5" />
               Quick Upload
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Start processing your customs declaration files with AI-powered HS code matching
-              </p>
-              <Button asChild className="w-full">
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Start processing your customs declaration files with AI-powered HS code matching
+            </p>
+            
+            {/* Mobile-optimized buttons */}
+            <div className="space-y-2">
+              <Button asChild className="w-full h-12 text-sm font-medium">
                 <Link href="/dashboard/upload">
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Files
                 </Link>
               </Button>
-              <Button variant="outline" asChild className="w-full">
+              <Button variant="outline" asChild className="w-full h-10 text-sm">
                 <Link href="/dashboard/history">
                   <FileText className="mr-2 h-4 w-4" />
                   View History
@@ -261,54 +264,76 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Jobs */}
+      {/* Recent Jobs - Responsive */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Recent Processing Jobs</CardTitle>
-          <Button variant="ghost" size="sm" asChild>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-4">
+          <CardTitle className="text-lg font-semibold">Recent Processing Jobs</CardTitle>
+          <Button variant="ghost" size="sm" asChild className="self-start sm:self-center">
             <Link href="/dashboard/history">
-              View All
+              <span className="hidden sm:inline">View All</span>
+              <span className="sm:hidden">All Jobs</span>
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
         </CardHeader>
         <CardContent>
           {recentJobs.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {recentJobs.map((job) => (
                 <div
                   key={job.id}
-                  className="flex items-center justify-between rounded-lg border p-4 hover:bg-gray-50 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors space-y-3 sm:space-y-0"
                 >
-                  <div className="flex items-center space-x-4">
-                    {getStatusIcon(job.status)}
-                    <div>
-                      <p className="text-sm font-medium">{job.fileName}</p>
-                      <p className="text-xs text-gray-500">{job.date}</p>
+                  {/* Mobile-first layout */}
+                  <div className="flex items-start space-x-3 flex-1">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {getStatusIcon(job.status)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate text-foreground">
+                        {job.fileName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{job.date}</p>
+                      {/* Mobile: Show job details inline */}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground sm:hidden">
+                        <span>{job.products} products</span>
+                        {job.confidence > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{job.confidence}% confidence</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{job.products} products</p>
+                  
+                  {/* Desktop: Show details and status side by side */}
+                  <div className="flex items-center justify-between sm:justify-end space-x-4">
+                    <div className="hidden sm:block text-right">
+                      <p className="text-sm font-medium text-foreground">
+                        {job.products} products
+                      </p>
                       {job.confidence > 0 && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           {job.confidence}% confidence
                         </p>
                       )}
                     </div>
-                    {getStatusBadge(job.status)}
+                    <div className="flex-shrink-0">
+                      {getStatusBadge(job.status)}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No processing jobs yet</p>
-              <p className="text-sm text-gray-400 mb-4">
-                Upload your first file to get started
+            <div className="text-center py-8 px-4">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-foreground font-medium mb-1">No processing jobs yet</p>
+              <p className="text-sm text-muted-foreground mb-6">
+                Upload your first file to get started with AI-powered trade processing
               </p>
-              <Button asChild>
+              <Button asChild size="sm" className="h-10">
                 <Link href="/dashboard/upload">
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Files

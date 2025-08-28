@@ -1,28 +1,36 @@
 /**
- * Enhanced mobile navigation component with Sheet component
+ * Enhanced mobile navigation component with improved UX and accessibility
  */
 'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, Upload, Home, History, User, LogOut, X } from 'lucide-react'
+import { useState } from 'react'
+import { Menu, Upload, Home, History, User, LogOut, X, Settings, CreditCard, HelpCircle } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetClose
 } from '@/components/shared/ui/ui/sheet'
 import { Button } from '@/components/shared/ui/button'
 import { Badge } from '@/components/shared/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/shared/ui/ui/avatar'
 import { Separator } from '@/components/shared/ui/ui/separator'
 
-const navigation = [
+const primaryNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Upload Files', href: '/dashboard/upload', icon: Upload },
   { name: 'Processing History', href: '/dashboard/history', icon: History },
   { name: 'Profile', href: '/dashboard/profile', icon: User },
+]
+
+const secondaryNavigation = [
+  { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { name: 'Help & Support', href: '/help', icon: HelpCircle, external: true },
 ]
 
 interface MobileNavigationProps {
@@ -37,100 +45,167 @@ export default function MobileNavigation({
   isLoggingOut 
 }: MobileNavigationProps) {
   const pathname = usePathname()
+  const [isOpen, setIsOpen] = useState(false)
 
   const getUserInitials = () => {
     if (!user) return 'U'
     return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase()
   }
 
+  const handleLinkClick = () => {
+    setIsOpen(false)
+  }
+
+  const handleSignOut = async () => {
+    setIsOpen(false)
+    await onSignOut()
+  }
+
+  const isActiveLink = (href: string) => {
+    if (href === '/dashboard') {
+      return pathname === '/dashboard'
+    }
+    return pathname.startsWith(href)
+  }
+
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden">
-          <Menu className="h-6 w-6" />
-          <span className="sr-only">Open navigation menu</span>
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-80 px-0">
-        <SheetHeader className="px-6 pb-4">
-          <SheetTitle className="text-left text-xl font-bold text-gray-900">
-            XM-Port
-          </SheetTitle>
-        </SheetHeader>
-        
-        {/* User Profile Section */}
-        <div className="px-6 pb-4">
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-blue-500 text-white">
-                {getUserInitials()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.firstName} {user?.lastName}
-              </p>
-              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+    <div className="md:hidden">
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-12 w-12 touch-manipulation" 
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-80 p-0 flex flex-col">
+          {/* Header */}
+          <SheetHeader className="border-b p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <SheetTitle className="text-lg font-semibold">XM-Port</SheetTitle>
+                {user && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Welcome, {user.firstName || user.email}
+                  </p>
+                )}
+              </div>
+              <SheetClose asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Close navigation">
+                  <X className="h-4 w-4" />
+                </Button>
+              </SheetClose>
             </div>
-          </div>
-          
-          {/* Credit Balance */}
-          {user && (
-            <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-100">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-blue-700 font-medium">Credits</span>
-                <Badge variant="outline" className="bg-white">
+            
+            {/* Credit Balance */}
+            {user && (
+              <div className="flex items-center justify-between mt-4 p-3 bg-primary/5 rounded-lg">
+                <span className="text-sm font-medium">Credits</span>
+                <Badge variant="secondary" className="bg-primary/10">
                   {user.creditsRemaining?.toLocaleString() ?? '0'}
                 </Badge>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </SheetHeader>
 
-        <Separator />
+          {/* Navigation Items */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <nav className="space-y-6">
+              {/* Primary Navigation */}
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Main
+                </h3>
+                <div className="space-y-1">
+                  {primaryNavigation.map((item) => {
+                    const Icon = item.icon
+                    const isActive = isActiveLink(item.href)
+                    
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={handleLinkClick}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors min-h-[44px] touch-manipulation ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                        aria-current={isActive ? 'page' : undefined}
+                      >
+                        <Icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="flex-1">{item.name}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
 
-        {/* Navigation Links */}
-        <nav className="flex-1 px-6 py-4">
-          <div className="space-y-1">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <item.icon
-                    className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                      isActive ? 'text-blue-700' : 'text-gray-400 group-hover:text-gray-600'
-                    }`}
-                  />
-                  {item.name}
-                </Link>
-              )
-            })}
+              {/* Secondary Navigation */}
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Account
+                </h3>
+                <div className="space-y-1">
+                  {secondaryNavigation.map((item) => {
+                    const Icon = item.icon
+                    const isActive = !item.external && isActiveLink(item.href)
+                    
+                    if (item.external) {
+                      return (
+                        <a
+                          key={item.href}
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={handleLinkClick}
+                          className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors min-h-[44px] touch-manipulation"
+                        >
+                          <Icon className="h-5 w-5 flex-shrink-0" />
+                          <span className="flex-1">{item.name}</span>
+                        </a>
+                      )
+                    }
+                    
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={handleLinkClick}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors min-h-[44px] touch-manipulation ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                        aria-current={isActive ? 'page' : undefined}
+                      >
+                        <Icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="flex-1">{item.name}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            </nav>
           </div>
-        </nav>
 
-        <Separator />
-
-        {/* Bottom Actions */}
-        <div className="p-6">
-          <Button
-            variant="ghost"
-            onClick={onSignOut}
-            disabled={isLoggingOut}
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <LogOut className={`mr-3 h-4 w-4 ${isLoggingOut ? 'animate-spin' : ''}`} />
-            {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+          {/* Footer */}
+          <div className="border-t p-6">
+            <Button
+              onClick={handleSignOut}
+              disabled={isLoggingOut}
+              variant="outline"
+              className="w-full justify-start min-h-[44px] touch-manipulation"
+            >
+              <LogOut className={`h-4 w-4 mr-2 ${isLoggingOut ? 'animate-spin' : ''}`} />
+              {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
   )
 }
