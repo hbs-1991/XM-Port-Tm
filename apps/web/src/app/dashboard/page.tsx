@@ -11,6 +11,9 @@ import { Badge } from '@/components/shared/ui/badge'
 import CreditBalance from '@/components/dashboard/CreditBalance'
 import UsageMetrics from '@/components/dashboard/UsageMetrics'
 import AnalyticsCharts from '@/components/dashboard/AnalyticsCharts'
+import { MetricsBar, type MetricsData } from '@/components/dashboard/MetricsBar'
+import { ActionCardsRow, type ActionCardsData } from '@/components/dashboard/ActionCardsRow'
+import { EnhancedJobsTable, type JobData } from '@/components/dashboard/EnhancedJobsTable'
 import { EmptyDashboard, EmptyRecentJobs } from '@/components/dashboard/EmptyStates'
 import { DashboardSkeleton } from '@/components/dashboard/SkeletonLoaders'
 import {
@@ -33,31 +36,92 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const recentJobs = [
+  const mockJobs: JobData[] = [
     {
       id: '1',
       fileName: 'import_batch_2024_01.xlsx',
       status: 'completed',
-      date: '2024-01-23 14:30',
-      products: 150,
-      confidence: 96.5,
+      dateCreated: '2024-01-23T14:30:00Z',
+      dateCompleted: '2024-01-23T14:45:00Z',
+      productsCount: 150,
+      confidenceScore: 96.5,
+      fileSize: 2048576, // 2MB
+      fileType: 'xlsx',
+      downloadUrl: '/api/jobs/1/download'
     },
     {
       id: '2',
       fileName: 'export_products_jan.csv',
       status: 'processing',
-      date: '2024-01-23 13:45',
-      products: 87,
-      confidence: 0,
+      dateCreated: '2024-01-23T13:45:00Z',
+      productsCount: 87,
+      fileSize: 1024000, // 1MB
+      fileType: 'csv'
     },
     {
       id: '3',
       fileName: 'customs_declaration.xlsx',
       status: 'completed',
-      date: '2024-01-23 12:20',
-      products: 234,
-      confidence: 93.8,
+      dateCreated: '2024-01-23T12:20:00Z',
+      dateCompleted: '2024-01-23T12:35:00Z',
+      productsCount: 234,
+      confidenceScore: 93.8,
+      fileSize: 3145728, // 3MB
+      fileType: 'xlsx',
+      downloadUrl: '/api/jobs/3/download'
     },
+    {
+      id: '4',
+      fileName: 'trade_data_february.xlsx',
+      status: 'failed',
+      dateCreated: '2024-01-23T11:15:00Z',
+      productsCount: 0,
+      fileSize: 1536000, // 1.5MB
+      fileType: 'xlsx',
+      errorMessage: 'Invalid file format: Missing required columns'
+    },
+    {
+      id: '5',
+      fileName: 'products_list_updated.csv',
+      status: 'pending',
+      dateCreated: '2024-01-23T10:30:00Z',
+      productsCount: 45,
+      fileSize: 512000, // 0.5MB
+      fileType: 'csv'
+    },
+    {
+      id: '6',
+      fileName: 'shipping_manifest_jan.xlsx',
+      status: 'completed',
+      dateCreated: '2024-01-22T16:45:00Z',
+      dateCompleted: '2024-01-22T17:00:00Z',
+      productsCount: 78,
+      confidenceScore: 89.2,
+      fileSize: 1872000, // 1.8MB
+      fileType: 'xlsx',
+      downloadUrl: '/api/jobs/6/download'
+    },
+    {
+      id: '7',
+      fileName: 'customs_form_batch_3.csv',
+      status: 'completed',
+      dateCreated: '2024-01-22T15:20:00Z',
+      dateCompleted: '2024-01-22T15:38:00Z',
+      productsCount: 312,
+      confidenceScore: 94.7,
+      fileSize: 2560000, // 2.5MB
+      fileType: 'csv',
+      downloadUrl: '/api/jobs/7/download'
+    },
+    {
+      id: '8',
+      fileName: 'import_dec_corrected.xlsx',
+      status: 'processing',
+      dateCreated: '2024-01-22T14:10:00Z',
+      productsCount: 156,
+      fileSize: 2048000, // 2MB
+      fileType: 'xlsx'
+    }
   ]
 
   // Fetch user statistics
@@ -169,6 +233,76 @@ export default function DashboardPage() {
     )
   }
 
+  // Transform UserStatistics to MetricsData format
+  const getMetricsData = (stats: UserStatistics): MetricsData => {
+    const creditPercentage = stats.creditBalance.total > 0 
+      ? (stats.creditBalance.remaining / stats.creditBalance.total) * 100 
+      : 0;
+
+    return {
+      creditBalance: {
+        remaining: stats.creditBalance.remaining,
+        total: stats.creditBalance.total,
+        percentage: creditPercentage,
+        trend: creditPercentage > 50 ? 'stable' : creditPercentage > 25 ? 'down' : 'down'
+      },
+      totalJobs: {
+        count: stats.totalJobs,
+        trend: stats.totalJobs > 100 ? 'up' : stats.totalJobs > 50 ? 'stable' : 'down',
+        percentageChange: 12.5 // This would come from API comparing to previous period
+      },
+      successRate: {
+        percentage: stats.successRate,
+        trend: stats.successRate > 95 ? 'up' : stats.successRate > 90 ? 'stable' : 'down'
+      },
+      averageConfidence: {
+        score: stats.averageConfidence,
+        trend: stats.averageConfidence > 90 ? 'up' : stats.averageConfidence > 85 ? 'stable' : 'down'
+      },
+      monthlyUsage: {
+        creditsUsed: stats.monthlyUsage.creditsUsed,
+        jobsCompleted: stats.monthlyUsage.jobsCompleted,
+        month: `${stats.monthlyUsage.month} ${stats.monthlyUsage.year}`,
+        percentageChange: 8.2 // This would come from API comparing to previous month
+      }
+    };
+  };
+
+  // Transform UserStatistics to ActionCardsData format
+  const getActionCardsData = (stats: UserStatistics): ActionCardsData => {
+    return {
+      upload: {
+        allowedTypes: ['.xlsx', '.xls', '.csv'],
+        maxSize: 25 * 1024 * 1024, // 25MB
+        isUploading: false
+      },
+      monthlyOverview: {
+        currentMonth: {
+          creditsUsed: stats.monthlyUsage.creditsUsed,
+          jobsCompleted: stats.monthlyUsage.jobsCompleted,
+          avgProcessingTime: stats.monthlyUsage.averageProcessingTime
+        },
+        previousMonth: {
+          creditsUsed: Math.round(stats.monthlyUsage.creditsUsed * 0.85), // Mock previous month data
+          jobsCompleted: Math.round(stats.monthlyUsage.jobsCompleted * 0.92),
+          avgProcessingTime: stats.monthlyUsage.averageProcessingTime + 300
+        },
+        chartData: [
+          { month: 'Jun', jobs: 18, credits: 380 },
+          { month: 'Jul', jobs: 24, credits: 420 },
+          { month: 'Aug', jobs: stats.monthlyUsage.jobsCompleted, credits: stats.monthlyUsage.creditsUsed }
+        ]
+      },
+      performance: {
+        successRate: stats.successRate,
+        totalJobs: stats.processingStats.totalJobs,
+        successfulJobs: stats.processingStats.completedJobs,
+        failedJobs: stats.processingStats.failedJobs,
+        pendingJobs: stats.processingStats.totalJobs - stats.processingStats.completedJobs - stats.processingStats.failedJobs
+      }
+    };
+  };
+
   // Show loading skeleton while fetching data
   if (loading) {
     return <DashboardSkeleton />
@@ -197,6 +331,24 @@ export default function DashboardPage() {
           Here's an overview of your processing activity and account statistics
         </p>
       </div>
+
+      {/* Key Metrics Bar */}
+      <MetricsBar 
+        data={statistics ? getMetricsData(statistics) : undefined}
+        loading={loading}
+        className="mb-6"
+      />
+
+      {/* Action Cards Row */}
+      <ActionCardsRow
+        data={statistics ? getActionCardsData(statistics) : undefined}
+        loading={loading}
+        onFileUpload={(files) => {
+          console.log('Files uploaded:', files);
+          // TODO: Integrate with actual upload logic
+        }}
+        className="mb-6"
+      />
 
       {/* Credit Balance and Quick Actions - Mobile First */}
       <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-3">
@@ -264,85 +416,35 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Jobs - Responsive */}
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-4">
-          <CardTitle className="text-lg font-semibold">Recent Processing Jobs</CardTitle>
-          <Button variant="ghost" size="sm" asChild className="self-start sm:self-center">
-            <Link href="/dashboard/history">
-              <span className="hidden sm:inline">View All</span>
-              <span className="sm:hidden">All Jobs</span>
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {recentJobs.length > 0 ? (
-            <div className="space-y-3">
-              {recentJobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors space-y-3 sm:space-y-0"
-                >
-                  {/* Mobile-first layout */}
-                  <div className="flex items-start space-x-3 flex-1">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {getStatusIcon(job.status)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate text-foreground">
-                        {job.fileName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{job.date}</p>
-                      {/* Mobile: Show job details inline */}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground sm:hidden">
-                        <span>{job.products} products</span>
-                        {job.confidence > 0 && (
-                          <>
-                            <span>•</span>
-                            <span>{job.confidence}% confidence</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Desktop: Show details and status side by side */}
-                  <div className="flex items-center justify-between sm:justify-end space-x-4">
-                    <div className="hidden sm:block text-right">
-                      <p className="text-sm font-medium text-foreground">
-                        {job.products} products
-                      </p>
-                      {job.confidence > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          {job.confidence}% confidence
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex-shrink-0">
-                      {getStatusBadge(job.status)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 px-4">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-foreground font-medium mb-1">No processing jobs yet</p>
-              <p className="text-sm text-muted-foreground mb-6">
-                Upload your first file to get started with AI-powered trade processing
-              </p>
-              <Button asChild size="sm" className="h-10">
-                <Link href="/dashboard/upload">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Files
-                </Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Enhanced Jobs Table */}
+      <EnhancedJobsTable
+        jobs={mockJobs}
+        loading={loading}
+        onJobAction={(action, jobIds) => {
+          console.log(`Action: ${action} on jobs:`, jobIds);
+          // TODO: Integrate with actual job action handlers
+          if (action === 'download') {
+            // Handle download
+            jobIds.forEach(jobId => {
+              const job = mockJobs.find(j => j.id === jobId);
+              if (job?.downloadUrl) {
+                window.open(job.downloadUrl, '_blank');
+              }
+            });
+          } else if (action === 'delete') {
+            // Handle delete
+            console.log('Delete jobs:', jobIds);
+          }
+        }}
+        onJobDetails={(jobId) => {
+          console.log('View details for job:', jobId);
+          // TODO: Open job details modal or navigate to details page
+        }}
+        onRefresh={() => {
+          console.log('Refresh jobs table');
+          // TODO: Refetch jobs data
+        }}
+      />
 
       {/* Error Display */}
       {error && (
