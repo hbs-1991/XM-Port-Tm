@@ -26,6 +26,11 @@ import {
   AlertCircle,
   ArrowRight,
   BarChart3,
+  ChevronUp,
+  ChevronDown,
+  CreditCard,
+  Target,
+  Calendar,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { UserStatistics } from '@shared/types'
@@ -35,6 +40,7 @@ export default function DashboardPage() {
   const [statistics, setStatistics] = useState<UserStatistics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showDetailedAnalytics, setShowDetailedAnalytics] = useState(false)
 
   const mockJobs: JobData[] = [
     {
@@ -321,25 +327,70 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Section - Responsive Typography */}
-      <div className="space-y-2">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-          Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
-          Here's an overview of your processing activity and account statistics
-        </p>
+    <div className="space-y-8">
+      {/* Hero Section with Upload CTA */}
+      <div className="relative">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg -z-10"></div>
+        
+        <div className="px-6 py-8 sm:px-8 sm:py-12">
+          <div className="max-w-4xl mx-auto">
+            {/* Welcome Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
+                Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!
+              </h1>
+              <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+                Streamline your customs processing with AI-powered HS code matching
+              </p>
+            </div>
+
+            {/* Primary Action */}
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
+              <Button asChild size="lg" className="w-full sm:w-auto h-14 px-8 text-base font-medium shadow-lg">
+                <Link href="/dashboard/upload">
+                  <Upload className="mr-3 h-5 w-5" />
+                  Upload & Process Files
+                </Link>
+              </Button>
+              <Button variant="outline" asChild size="lg" className="w-full sm:w-auto h-14 px-6 text-base">
+                <Link href="/dashboard/history">
+                  <FileText className="mr-2 h-4 w-4" />
+                  View History
+                </Link>
+              </Button>
+            </div>
+
+            {/* Quick Stats Preview */}
+            {statistics && (
+              <div className="flex justify-center">
+                <div className="inline-flex items-center space-x-6 text-sm text-gray-600 bg-white/70 px-6 py-3 rounded-full backdrop-blur-sm">
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className="h-4 w-4 text-blue-600" />
+                    <span>{statistics.creditBalance.remaining.toLocaleString()} credits</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Target className="h-4 w-4 text-green-600" />
+                    <span>{statistics.successRate.toFixed(1)}% success rate</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="h-4 w-4 text-purple-600" />
+                    <span>{statistics.monthlyUsage.jobsCompleted} jobs this month</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Key Metrics Bar */}
+      {/* Key Metrics Bar with Progressive Disclosure */}
       <MetricsBar 
         data={statistics ? getMetricsData(statistics) : undefined}
         loading={loading}
-        className="mb-6"
       />
 
-      {/* Action Cards Row */}
+      {/* Secondary Action Cards - Reduced Prominence */}
       <ActionCardsRow
         data={statistics ? getActionCardsData(statistics) : undefined}
         loading={loading}
@@ -347,74 +398,64 @@ export default function DashboardPage() {
           console.log('Files uploaded:', files);
           // TODO: Integrate with actual upload logic
         }}
-        className="mb-6"
       />
 
-      {/* Credit Balance and Quick Actions - Mobile First */}
-      <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <CreditBalance 
-            creditBalance={statistics?.creditBalance}
-            loading={loading}
-          />
+      {/* Collapsible Analytics Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Detailed Analytics</h2>
+            <p className="text-sm text-gray-600">In-depth performance metrics and trends</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDetailedAnalytics(!showDetailedAnalytics)}
+            className="flex items-center gap-2"
+          >
+            {showDetailedAnalytics ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                Hide Analytics
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4" />
+                View Analytics
+              </>
+            )}
+          </Button>
         </div>
-        
-        {/* Quick Upload Card - Responsive */}
-        <Card className="lg:self-start">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Upload className="h-5 w-5" />
-              Quick Upload
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Start processing your customs declaration files with AI-powered HS code matching
-            </p>
-            
-            {/* Mobile-optimized buttons */}
-            <div className="space-y-2">
-              <Button asChild className="w-full h-12 text-sm font-medium">
-                <Link href="/dashboard/upload">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Files
-                </Link>
-              </Button>
-              <Button variant="outline" asChild className="w-full h-10 text-sm">
-                <Link href="/dashboard/history">
-                  <FileText className="mr-2 h-4 w-4" />
-                  View History
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+
+        {showDetailedAnalytics && (
+          <div className="space-y-6">
+            {/* Usage Metrics */}
+            <UsageMetrics 
+              statistics={statistics || undefined} 
+              loading={loading}
+            />
+
+            {/* Analytics Charts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Performance Charts
+                </CardTitle>
+                <CardDescription>
+                  Interactive data visualization of your processing performance and trends
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AnalyticsCharts 
+                  statistics={statistics || undefined}
+                  loading={loading}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
-
-      {/* Usage Metrics */}
-      <UsageMetrics 
-        statistics={statistics || undefined} 
-        loading={loading}
-      />
-
-      {/* Analytics Charts */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Analytics Dashboard
-          </CardTitle>
-          <CardDescription>
-            Interactive data visualization of your processing performance and trends
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AnalyticsCharts 
-            statistics={statistics || undefined}
-            loading={loading}
-          />
-        </CardContent>
-      </Card>
 
       {/* Enhanced Jobs Table */}
       <EnhancedJobsTable

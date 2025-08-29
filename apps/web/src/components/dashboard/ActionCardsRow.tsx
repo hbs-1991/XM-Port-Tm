@@ -132,10 +132,10 @@ const QuickUploadCard: React.FC<QuickUploadCardProps> = ({
   const cardState = getCardState();
 
   const stateStyles = {
-    default: 'bg-gradient-to-br from-blue-50 to-purple-50 border-dashed border-2 border-gray-300 hover:border-blue-400',
-    dragActive: 'bg-gradient-to-br from-blue-100 to-purple-100 border-solid border-2 border-blue-500 animate-pulse',
-    success: 'bg-gradient-to-br from-green-50 to-emerald-50 border-solid border-2 border-green-500',
-    error: 'bg-gradient-to-br from-red-50 to-pink-50 border-solid border-2 border-red-500'
+    default: 'bg-blue-50 border-dashed border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-100',
+    dragActive: 'bg-blue-100 border-solid border-2 border-blue-500 shadow-lg',
+    success: 'bg-green-50 border-solid border-2 border-green-500 shadow-md',
+    error: 'bg-red-50 border-solid border-2 border-red-500 shadow-md'
   };
 
   const formatFileSize = (bytes: number) => {
@@ -253,9 +253,9 @@ const MonthlyOverviewCard: React.FC<MonthlyOverviewCardProps> = ({
   };
 
   return (
-    <Card className="bg-gradient-to-br from-green-50 to-teal-50 border-0 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
+    <Card className="bg-green-50 border border-green-200 shadow-md hover:shadow-lg transition-all duration-200">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2 text-lg text-green-700">
           <BarChart3 className="h-5 w-5 text-green-600" />
           Monthly Overview
         </CardTitle>
@@ -381,10 +381,10 @@ const ProcessingPerformanceCard: React.FC<ProcessingPerformanceCardProps> = ({
   };
 
   return (
-    <Card className="bg-gradient-to-br from-orange-50 to-red-50 border-0 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
+    <Card className="bg-amber-50 border border-amber-200 shadow-md hover:shadow-lg transition-all duration-200">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <PieChartIcon className="h-5 w-5 text-orange-600" />
+        <CardTitle className="flex items-center gap-2 text-lg text-amber-700">
+          <PieChartIcon className="h-5 w-5 text-amber-600" />
           Processing Performance
         </CardTitle>
         <CardDescription>Job completion and success rates</CardDescription>
@@ -392,7 +392,7 @@ const ProcessingPerformanceCard: React.FC<ProcessingPerformanceCardProps> = ({
       <CardContent className="space-y-4">
         {/* Center Performance Score */}
         <div className="text-center">
-          <div className="text-2xl font-bold text-orange-700">
+          <div className="text-2xl font-bold text-amber-700">
             {performance.successRate.toFixed(1)}%
           </div>
           <p className="text-sm text-muted-foreground">Overall Success Rate</p>
