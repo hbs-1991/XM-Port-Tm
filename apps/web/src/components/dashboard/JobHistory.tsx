@@ -36,7 +36,8 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ProcessingJob, ProcessingStatus } from '@shared/types/processing'
-import { useProcessingUpdates, ProcessingUpdate } from '@/hooks/useProcessingUpdates'
+import { useProcessingUpdates } from '@/hooks/useProcessingUpdates'
+import { ProcessingUpdateMessage } from '@/services/websocketService'
 import { useAuth } from '@/hooks/useAuth'
 import { JobDetails } from './JobDetails'
 import { apiCallWithRetry, RetryStatus } from '@/services/errorRecovery'
@@ -317,7 +318,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({ className }) => {
   useEffect(() => {
     if (!lastMessage || lastMessage.type !== 'processing_update') return
 
-    const update = lastMessage as ProcessingUpdate
+    const update = lastMessage as ProcessingUpdateMessage
     
     // Update the job in the current jobs list if it exists
     setJobs(prevJobs => {

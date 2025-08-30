@@ -4,8 +4,22 @@ Pydantic schemas for HS code matching API endpoints
 from typing import List, Optional, Dict, Any, Tuple
 from pydantic import BaseModel, Field
 
-from ..services.hs_matching_service import HSCodeMatchRequest, HSCodeBatchMatchRequest
+# Request models moved here to avoid circular imports
 from ..core.openai_config import HSCodeMatchResult
+
+
+class HSCodeMatchRequest(BaseModel):
+    """Request schema for HS code matching"""
+    product_description: str = Field(..., min_length=5, max_length=500, description="Product description to match")
+    country: str = Field(default="default", description="Country code for specific HS code variations")
+    include_alternatives: bool = Field(default=True, description="Include alternative suggestions")
+    confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum confidence threshold")
+
+
+class HSCodeBatchMatchRequest(BaseModel):
+    """Request schema for batch HS code matching"""
+    products: List[HSCodeMatchRequest] = Field(..., min_items=1, max_items=100, description="List of products to match")
+    country: str = Field(default="default", description="Default country code for all products")
 
 
 class HSCodeMatchRequestAPI(BaseModel):

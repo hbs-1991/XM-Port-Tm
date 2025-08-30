@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 
 from src.core.auth import get_current_active_user
-from src.core.database import get_db
+from src.core.database import get_db, sync_session_maker
 from src.core.config import get_settings
 from src.models.user import User
 from src.services.file_processing import FileProcessingService
@@ -26,8 +26,7 @@ async def upload_file(
     request: Request,
     file: UploadFile = File(..., description="CSV or XLSX file to upload"),
     country_schema: str = Form(default="USA", description="Country schema (3-letter code)"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Upload and validate CSV or XLSX file for processing
@@ -38,42 +37,13 @@ async def upload_file(
     Required columns: Product Description, Quantity, Unit, Value, Origin Country
     """
     try:
-        # Initialize file processing service
-        file_service = FileProcessingService(db)
-        
-        # Check user credits before processing
-        credit_check = file_service.check_user_credits(current_user, estimated_credits=1)
-        if not credit_check['has_sufficient_credits']:
-            raise HTTPException(
-                status_code=402,  # Payment Required
-                detail={
-                    "error": "insufficient_credits",
-                    "message": credit_check['message'],
-                    "credits_remaining": credit_check['credits_remaining'],
-                    "credits_required": credit_check['credits_required'],
-                    "subscription_tier": current_user.subscription_tier.value
-                }
-            )
-        
-        # Validate uploaded file
-        validation_result = await file_service.validate_file_upload(file)
-        
-        if not validation_result.is_valid:
-            return FileUploadResponse(
-                job_id="",
-                file_name=file.filename,
-                file_size=file.size or 0,
-                status="FAILED",
-                message="File validation failed",
-                validation_results=validation_result.dict()
-            )
-        
-        # Calculate actual credits required based on file size
-        required_credits = file_service.calculate_processing_credits(validation_result.total_rows)
-        
-        # Re-check credits with actual requirement
-        if required_credits > 1:  # If more credits needed than initially estimated
-            credit_check = file_service.check_user_credits(current_user, required_credits)
+        # Create a synchronous database session for file processing
+        with sync_session_maker() as db:
+            # Initialize file processing service
+            file_service = FileProcessingService(db)
+            
+            # Check user credits before processing
+            credit_check = file_service.check_user_credits(current_user, estimated_credits=1)
             if not credit_check['has_sufficient_credits']:
                 raise HTTPException(
                     status_code=402,  # Payment Required
@@ -82,70 +52,101 @@ async def upload_file(
                         "message": credit_check['message'],
                         "credits_remaining": credit_check['credits_remaining'],
                         "credits_required": credit_check['credits_required'],
-                        "subscription_tier": current_user.subscription_tier.value,
-                        "file_rows": validation_result.total_rows
+                        "subscription_tier": current_user.subscription_tier.value
                     }
                 )
-        
-        # Reserve credits atomically before processing
-        if not file_service.reserve_user_credits(current_user, required_credits):
-            raise HTTPException(
-                status_code=409,  # Conflict
-                detail={
-                    "error": "credit_reservation_failed",
-                    "message": "Unable to reserve credits. Please try again or check your balance.",
-                    "credits_required": required_credits
-                }
-            )
-        
-        # Upload file to S3 (if configured)
-        try:
-            file_url = await file_service.upload_file_to_s3(file, str(current_user.id))
-        except HTTPException as e:
-            # Check if fallback is allowed and we're not in production
-            if ("S3 configuration not available" in str(e.detail) and 
-                settings.ALLOW_S3_FALLBACK and 
-                not settings.is_production):
-                # Development fallback to local storage - NOT production ready
-                file_url = f"local://uploads/{current_user.id}/{file.filename}"
-                # Log warning about using fallback
-                import logging
-                logging.warning(
-                    f"Using local storage fallback for file upload. "
-                    f"File: {file.filename}, User: {current_user.id}. "
-                    f"This is not suitable for production use."
+            
+            # Validate uploaded file
+            validation_result = await file_service.validate_file_upload(file)
+            
+            if not validation_result.is_valid:
+                return FileUploadResponse(
+                    job_id="",
+                    file_name=file.filename,
+                    file_size=file.size or 0,
+                    status="FAILED",
+                    message="File validation failed",
+                    validation_results=validation_result.dict()
                 )
-            else:
-                # In production or when fallback is disabled, raise the original error
-                raise
-        
-        # Create processing job with credit information
-        try:
-            processing_job = file_service.create_processing_job(
-                user=current_user,
-                file_name=file.filename,
-                file_url=file_url,
-                file_size=file.size or 0,
-                country_schema=country_schema.upper(),
-                credits_used=required_credits,
-                total_products=validation_result.total_rows
+            
+            # Calculate actual credits required based on file size
+            required_credits = file_service.calculate_processing_credits(validation_result.total_rows)
+            
+            # Re-check credits with actual requirement
+            if required_credits > 1:  # If more credits needed than initially estimated
+                credit_check = file_service.check_user_credits(current_user, required_credits)
+                if not credit_check['has_sufficient_credits']:
+                    raise HTTPException(
+                        status_code=402,  # Payment Required
+                        detail={
+                            "error": "insufficient_credits",
+                            "message": credit_check['message'],
+                            "credits_remaining": credit_check['credits_remaining'],
+                            "credits_required": credit_check['credits_required'],
+                            "subscription_tier": current_user.subscription_tier.value,
+                            "file_rows": validation_result.total_rows
+                        }
+                    )
+            
+            # Reserve credits atomically before processing
+            if not file_service.reserve_user_credits(current_user, required_credits):
+                raise HTTPException(
+                    status_code=409,  # Conflict
+                    detail={
+                        "error": "credit_reservation_failed",
+                        "message": "Unable to reserve credits. Please try again or check your balance.",
+                        "credits_required": required_credits
+                    }
+                )
+            
+            # Upload file to S3 (if configured)
+            try:
+                file_url = await file_service.upload_file_to_s3(file, str(current_user.id))
+            except HTTPException as e:
+                # Check if fallback is allowed and we're not in production
+                if ("S3 configuration not available" in str(e.detail) and 
+                    settings.ALLOW_S3_FALLBACK and 
+                    not settings.is_production):
+                    # Development fallback to local storage - NOT production ready
+                    file_url = f"local://uploads/{current_user.id}/{file.filename}"
+                    # Log warning about using fallback
+                    import logging
+                    logging.warning(
+                        f"Using local storage fallback for file upload. "
+                        f"File: {file.filename}, User: {current_user.id}. "
+                        f"This is not suitable for production use."
+                    )
+                else:
+                    # In production or when fallback is disabled, raise the original error
+                    raise
+            
+            # Create processing job with credit information
+            try:
+                processing_job = file_service.create_processing_job(
+                    user=current_user,
+                    file_name=file.filename,
+                    file_url=file_url,
+                    file_size=file.size or 0,
+                    country_schema=country_schema.upper(),
+                    credits_used=required_credits,
+                    total_products=validation_result.total_rows
+                )
+            except Exception as e:
+                # If job creation fails, refund credits
+                file_service.refund_user_credits(current_user, required_credits)
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to create processing job: {str(e)}"
+                )
+            
+            return FileUploadResponse(
+                job_id=str(processing_job.id),
+                file_name=processing_job.input_file_name,
+                file_size=processing_job.input_file_size,
+                status=processing_job.status.value,
+                message="File uploaded and validated successfully. Processing will begin shortly.",
+                validation_results=validation_result.dict() if validation_result.warnings else None
             )
-        except Exception as e:
-            # If job creation fails, refund credits
-            file_service.refund_user_credits(current_user, required_credits)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to create processing job: {str(e)}"
-            )
-        
-        return FileUploadResponse(
-            job_id=str(processing_job.id),
-            file_name=processing_job.input_file_name,
-            file_size=processing_job.input_file_size,
-            status=processing_job.status.value,
-            message="File uploaded and validated successfully. Processing will begin shortly.",
-            validation_results=validation_result.dict() if validation_result.warnings else None
-        )
         
     except HTTPException:
         raise
@@ -167,8 +168,7 @@ async def upload_file(
 async def validate_file_only(
     request: Request,
     file: UploadFile = File(..., description="CSV or XLSX file to validate"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Validate CSV or XLSX file without uploading or processing
@@ -179,21 +179,23 @@ async def validate_file_only(
     Required columns: Product Description, Quantity, Unit, Value, Origin Country, Unit Price
     """
     try:
-        # Initialize file processing service
-        file_service = FileProcessingService(db)
-        
-        # Validate uploaded file without storage
-        validation_result = await file_service.validate_file_upload(file)
-        
-        return {
-            "valid": validation_result.is_valid,
-            "errors": [error.dict() for error in validation_result.errors],
-            "warnings": validation_result.warnings,
-            "total_rows": validation_result.total_rows,
-            "valid_rows": validation_result.valid_rows,
-            "summary": validation_result.summary.dict() if validation_result.summary else None,
-            "previewData": validation_result.preview_data if hasattr(validation_result, 'preview_data') else None
-        }
+        # Create a synchronous database session for file processing
+        with sync_session_maker() as db:
+            # Initialize file processing service
+            file_service = FileProcessingService(db)
+            
+            # Validate uploaded file without storage
+            validation_result = await file_service.validate_file_upload(file)
+            
+            return {
+                "valid": validation_result.is_valid,
+                "errors": [error.dict() for error in validation_result.errors],
+                "warnings": validation_result.warnings,
+                "total_rows": validation_result.total_rows,
+                "valid_rows": validation_result.valid_rows,
+                "summary": validation_result.summary.dict() if validation_result.summary else None,
+                "previewData": validation_result.preview_data if hasattr(validation_result, 'preview_data') else None
+            }
         
     except HTTPException:
         raise

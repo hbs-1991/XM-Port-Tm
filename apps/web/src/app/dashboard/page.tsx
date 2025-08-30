@@ -1,5 +1,5 @@
 /**
- * Main dashboard page showing overview and statistics
+ * Simplified dashboard page - Clean, focused metrics and job management
  */
 'use client'
 
@@ -7,30 +7,16 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shared/ui/card'
 import { Button } from '@/components/shared/ui/button'
-import { Badge } from '@/components/shared/ui/badge'
-import CreditBalance from '@/components/dashboard/CreditBalance'
-import UsageMetrics from '@/components/dashboard/UsageMetrics'
+import SimplifiedMetrics, { type SimplifiedMetricsData } from '@/components/dashboard/SimplifiedMetrics'
 import AnalyticsCharts from '@/components/dashboard/AnalyticsCharts'
-import { MetricsBar, type MetricsData } from '@/components/dashboard/MetricsBar'
-import { ActionCardsRow, type ActionCardsData } from '@/components/dashboard/ActionCardsRow'
 import { EnhancedJobsTable, type JobData } from '@/components/dashboard/EnhancedJobsTable'
-import { EmptyDashboard, EmptyRecentJobs } from '@/components/dashboard/EmptyStates'
+import { EmptyDashboard } from '@/components/dashboard/EmptyStates'
 import { DashboardSkeleton } from '@/components/dashboard/SkeletonLoaders'
 import {
   Upload,
-  FileText,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  ArrowRight,
-  BarChart3,
   ChevronUp,
   ChevronDown,
-  CreditCard,
-  Target,
-  Calendar,
+  BarChart3,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { UserStatistics } from '@shared/types'
@@ -40,7 +26,7 @@ export default function DashboardPage() {
   const [statistics, setStatistics] = useState<UserStatistics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showDetailedAnalytics, setShowDetailedAnalytics] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(false)
 
   const mockJobs: JobData[] = [
     {
@@ -213,98 +199,25 @@ export default function DashboardPage() {
     fetchStatistics()
   }, [user])
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'processing':
-        return <AlertCircle className="h-4 w-4 text-yellow-500 animate-pulse" />
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />
-      default:
-        return <Clock className="h-4 w-4 text-gray-400" />
-    }
-  }
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      completed: "default",
-      processing: "secondary",
-      failed: "destructive",
-    }
-    return (
-      <Badge variant={variants[status] || "outline"}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    )
-  }
-
-  // Transform UserStatistics to MetricsData format
-  const getMetricsData = (stats: UserStatistics): MetricsData => {
-    const creditPercentage = stats.creditBalance.total > 0 
-      ? (stats.creditBalance.remaining / stats.creditBalance.total) * 100 
-      : 0;
-
+  // Transform UserStatistics to SimplifiedMetricsData format
+  const getSimplifiedMetricsData = (stats: UserStatistics): SimplifiedMetricsData => {
     return {
-      creditBalance: {
-        remaining: stats.creditBalance.remaining,
-        total: stats.creditBalance.total,
-        percentage: creditPercentage,
-        trend: creditPercentage > 50 ? 'stable' : creditPercentage > 25 ? 'down' : 'down'
+      credits: {
+        value: stats.creditBalance.remaining,
+        label: `of ${stats.creditBalance.total.toLocaleString()} total`
       },
       totalJobs: {
-        count: stats.totalJobs,
-        trend: stats.totalJobs > 100 ? 'up' : stats.totalJobs > 50 ? 'stable' : 'down',
-        percentageChange: 12.5 // This would come from API comparing to previous period
+        value: stats.totalJobs,
+        label: 'All time'
       },
       successRate: {
-        percentage: stats.successRate,
-        trend: stats.successRate > 95 ? 'up' : stats.successRate > 90 ? 'stable' : 'down'
-      },
-      averageConfidence: {
-        score: stats.averageConfidence,
-        trend: stats.averageConfidence > 90 ? 'up' : stats.averageConfidence > 85 ? 'stable' : 'down'
+        value: stats.successRate,
+        unit: '%'
       },
       monthlyUsage: {
-        creditsUsed: stats.monthlyUsage.creditsUsed,
-        jobsCompleted: stats.monthlyUsage.jobsCompleted,
-        month: `${stats.monthlyUsage.month} ${stats.monthlyUsage.year}`,
-        percentageChange: 8.2 // This would come from API comparing to previous month
-      }
-    };
-  };
-
-  // Transform UserStatistics to ActionCardsData format
-  const getActionCardsData = (stats: UserStatistics): ActionCardsData => {
-    return {
-      upload: {
-        allowedTypes: ['.xlsx', '.xls', '.csv'],
-        maxSize: 25 * 1024 * 1024, // 25MB
-        isUploading: false
-      },
-      monthlyOverview: {
-        currentMonth: {
-          creditsUsed: stats.monthlyUsage.creditsUsed,
-          jobsCompleted: stats.monthlyUsage.jobsCompleted,
-          avgProcessingTime: stats.monthlyUsage.averageProcessingTime
-        },
-        previousMonth: {
-          creditsUsed: Math.round(stats.monthlyUsage.creditsUsed * 0.85), // Mock previous month data
-          jobsCompleted: Math.round(stats.monthlyUsage.jobsCompleted * 0.92),
-          avgProcessingTime: stats.monthlyUsage.averageProcessingTime + 300
-        },
-        chartData: [
-          { month: 'Jun', jobs: 18, credits: 380 },
-          { month: 'Jul', jobs: 24, credits: 420 },
-          { month: 'Aug', jobs: stats.monthlyUsage.jobsCompleted, credits: stats.monthlyUsage.creditsUsed }
-        ]
-      },
-      performance: {
-        successRate: stats.successRate,
-        totalJobs: stats.processingStats.totalJobs,
-        successfulJobs: stats.processingStats.completedJobs,
-        failedJobs: stats.processingStats.failedJobs,
-        pendingJobs: stats.processingStats.totalJobs - stats.processingStats.completedJobs - stats.processingStats.failedJobs
+        jobs: stats.monthlyUsage.jobsCompleted,
+        credits: stats.monthlyUsage.creditsUsed,
+        label: `${stats.monthlyUsage.month} ${stats.monthlyUsage.year}`
       }
     };
   };
@@ -327,179 +240,98 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Hero Section with Upload CTA */}
-      <div className="relative">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg -z-10"></div>
-        
-        <div className="px-6 py-8 sm:px-8 sm:py-12">
-          <div className="max-w-4xl mx-auto">
-            {/* Welcome Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
-                Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!
-              </h1>
-              <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
-                Streamline your customs processing with AI-powered HS code matching
-              </p>
-            </div>
+    <div className="space-y-6 p-6">
+      {/* Simplified Top Metrics Bar */}
+      <SimplifiedMetrics 
+        data={statistics ? getSimplifiedMetricsData(statistics) : undefined}
+        loading={loading}
+        className="mb-4"
+      />
 
-            {/* Primary Action */}
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
-              <Button asChild size="lg" className="w-full sm:w-auto h-14 px-8 text-base font-medium shadow-lg">
-                <Link href="/dashboard/upload">
-                  <Upload className="mr-3 h-5 w-5" />
-                  Upload & Process Files
-                </Link>
-              </Button>
-              <Button variant="outline" asChild size="lg" className="w-full sm:w-auto h-14 px-6 text-base">
-                <Link href="/dashboard/history">
-                  <FileText className="mr-2 h-4 w-4" />
-                  View History
-                </Link>
-              </Button>
-            </div>
-
-            {/* Quick Stats Preview */}
-            {statistics && (
-              <div className="flex justify-center">
-                <div className="inline-flex items-center space-x-6 text-sm text-gray-600 bg-white/70 px-6 py-3 rounded-full backdrop-blur-sm">
-                  <div className="flex items-center space-x-2">
-                    <CreditCard className="h-4 w-4 text-blue-600" />
-                    <span>{statistics.creditBalance.remaining.toLocaleString()} credits</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Target className="h-4 w-4 text-green-600" />
-                    <span>{statistics.successRate.toFixed(1)}% success rate</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-purple-600" />
-                    <span>{statistics.monthlyUsage.jobsCompleted} jobs this month</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Quick Upload Button */}
+      <div className="flex justify-center">
+        <Button asChild size="lg" className="shadow-md">
+          <Link href="/dashboard/upload">
+            <Upload className="mr-2 h-5 w-5" />
+            Upload New File
+          </Link>
+        </Button>
       </div>
 
-      {/* Key Metrics Bar with Progressive Disclosure */}
-      <MetricsBar 
-        data={statistics ? getMetricsData(statistics) : undefined}
-        loading={loading}
-      />
-
-      {/* Secondary Action Cards - Reduced Prominence */}
-      <ActionCardsRow
-        data={statistics ? getActionCardsData(statistics) : undefined}
-        loading={loading}
-        onFileUpload={(files) => {
-          console.log('Files uploaded:', files);
-          // TODO: Integrate with actual upload logic
-        }}
-      />
-
-      {/* Collapsible Analytics Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Detailed Analytics</h2>
-            <p className="text-sm text-gray-600">In-depth performance metrics and trends</p>
+      {/* Recent Processing Jobs Table */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl">Recent Processing Jobs</CardTitle>
+              <CardDescription>
+                Your latest file processing activities
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/dashboard/history">View All</Link>
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowDetailedAnalytics(!showDetailedAnalytics)}
-            className="flex items-center gap-2"
-          >
-            {showDetailedAnalytics ? (
-              <>
-                <ChevronUp className="h-4 w-4" />
-                Hide Analytics
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-4 w-4" />
-                View Analytics
-              </>
-            )}
-          </Button>
-        </div>
+        </CardHeader>
+        <CardContent className="px-0">
+          <EnhancedJobsTable
+            jobs={mockJobs}
+            loading={loading}
+            onJobAction={(action, jobIds) => {
+              console.log(`Action: ${action} on jobs:`, jobIds)
+              if (action === 'download') {
+                jobIds.forEach(jobId => {
+                  const job = mockJobs.find(j => j.id === jobId)
+                  if (job?.downloadUrl) {
+                    window.open(job.downloadUrl, '_blank')
+                  }
+                })
+              }
+            }}
+            onJobDetails={(jobId) => {
+              console.log('View details for job:', jobId)
+            }}
+            onRefresh={() => {
+              console.log('Refresh jobs table')
+            }}
+          />
+        </CardContent>
+      </Card>
 
-        {showDetailedAnalytics && (
-          <div className="space-y-6">
-            {/* Usage Metrics */}
-            <UsageMetrics 
-              statistics={statistics || undefined} 
+      {/* Collapsible Analytics & Charts Section */}
+      <Card>
+        <CardHeader 
+          className="cursor-pointer select-none"
+          onClick={() => setShowAnalytics(!showAnalytics)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <BarChart3 className="h-5 w-5 text-gray-600" />
+              <CardTitle className="text-lg">Analytics & Charts</CardTitle>
+            </div>
+            <Button variant="ghost" size="sm">
+              {showAnalytics ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          {!showAnalytics && (
+            <CardDescription>
+              Click to view detailed performance metrics and trends
+            </CardDescription>
+          )}
+        </CardHeader>
+        {showAnalytics && (
+          <CardContent>
+            <AnalyticsCharts 
+              statistics={statistics || undefined}
               loading={loading}
             />
-
-            {/* Analytics Charts */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Performance Charts
-                </CardTitle>
-                <CardDescription>
-                  Interactive data visualization of your processing performance and trends
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AnalyticsCharts 
-                  statistics={statistics || undefined}
-                  loading={loading}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
-
-      {/* Enhanced Jobs Table */}
-      <EnhancedJobsTable
-        jobs={mockJobs}
-        loading={loading}
-        onJobAction={(action, jobIds) => {
-          console.log(`Action: ${action} on jobs:`, jobIds);
-          // TODO: Integrate with actual job action handlers
-          if (action === 'download') {
-            // Handle download
-            jobIds.forEach(jobId => {
-              const job = mockJobs.find(j => j.id === jobId);
-              if (job?.downloadUrl) {
-                window.open(job.downloadUrl, '_blank');
-              }
-            });
-          } else if (action === 'delete') {
-            // Handle delete
-            console.log('Delete jobs:', jobIds);
-          }
-        }}
-        onJobDetails={(jobId) => {
-          console.log('View details for job:', jobId);
-          // TODO: Open job details modal or navigate to details page
-        }}
-        onRefresh={() => {
-          console.log('Refresh jobs table');
-          // TODO: Refetch jobs data
-        }}
-      />
-
-      {/* Error Display */}
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-2 text-red-600">
-              <AlertCircle className="h-4 w-4" />
-              <p className="text-sm">
-                {error} - Using demo data for display
-              </p>
-            </div>
           </CardContent>
-        </Card>
-      )}
+        )}
+      </Card>
     </div>
   )
 }

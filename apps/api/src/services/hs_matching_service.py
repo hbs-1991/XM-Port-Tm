@@ -23,23 +23,14 @@ from ..schemas.processing import ProductData
 from .cache_service import get_cache_service, noop_cache_service
 from .analytics_service import analytics_service
 
+# Import request models from schemas to avoid circular imports
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..schemas.hs_matching import HSCodeMatchRequest, HSCodeBatchMatchRequest
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-
-class HSCodeMatchRequest(BaseModel):
-    """Request schema for HS code matching"""
-    product_description: str = Field(..., min_length=5, max_length=500, description="Product description to match")
-    country: str = Field(default="default", description="Country code for specific HS code variations")
-    include_alternatives: bool = Field(default=True, description="Whether to include alternative matches")
-    confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum confidence threshold")
-
-
-class HSCodeBatchMatchRequest(BaseModel):
-    """Request schema for batch HS code matching"""
-    products: List[HSCodeMatchRequest] = Field(..., min_items=1, max_items=100, description="List of products to match")
-    country: str = Field(default="default", description="Default country code for all products")
 
 
 class HSCodeMatchingService:
@@ -238,7 +229,7 @@ class HSCodeMatchingService:
     
     async def match_batch_products(
         self,
-        requests: List[HSCodeMatchRequest],
+        requests: List["HSCodeMatchRequest"],
         max_concurrent: int = None
     ) -> List[HSCodeMatchResult]:
         """
@@ -282,7 +273,7 @@ class HSCodeMatchingService:
         # Create semaphore to limit concurrent requests
         semaphore = asyncio.Semaphore(max_concurrent)
         
-        async def match_with_semaphore(request: HSCodeMatchRequest) -> HSCodeMatchResult:
+        async def match_with_semaphore(request: "HSCodeMatchRequest") -> HSCodeMatchResult:
             async with semaphore:
                 return await self.match_single_product(
                     product_description=request.product_description,
@@ -462,7 +453,7 @@ class HSCodeMatchingService:
         """Determine if match requires manual review based on confidence"""
         return confidence < self.MEDIUM_CONFIDENCE_THRESHOLD
     
-    def _generate_batch_hash(self, requests: List[HSCodeMatchRequest]) -> str:
+    def _generate_batch_hash(self, requests: List["HSCodeMatchRequest"]) -> str:
         """Generate deterministic hash for batch requests for caching"""
         # Create sorted string representation of requests for consistent hashing
         request_strings = []

@@ -1,4 +1,4 @@
-// File: /mnt/d/PROJECTS/XM-PORT/apps/web/src/app/api/auth/[...nextauth]/route.ts
+// File: /home/beza91/projects/XM-PORT/apps/web/src/app/api/auth/[...nextauth]/route.ts
 import * as entry from '../../../../../../src/app/api/auth/[...nextauth]/route.js'
 import type { NextRequest } from 'next/server.js'
 

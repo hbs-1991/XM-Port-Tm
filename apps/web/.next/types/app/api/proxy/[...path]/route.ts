@@ -1,4 +1,4 @@
-// File: /mnt/d/PROJECTS/XM-PORT/apps/web/src/app/api/proxy/[...path]/route.ts
+// File: /home/beza91/projects/XM-PORT/apps/web/src/app/api/proxy/[...path]/route.ts
 import * as entry from '../../../../../../src/app/api/proxy/[...path]/route.js'
 import type { NextRequest } from 'next/server.js'
 

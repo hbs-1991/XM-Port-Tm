@@ -27,7 +27,8 @@ from src.schemas.processing import (
     ProcessingJobCreate,
     ValidationSummary
 )
-from src.services.hs_matching_service import hs_matching_service, HSCodeMatchRequest
+from src.services.hs_matching_service import hs_matching_service
+from src.schemas.hs_matching import HSCodeMatchRequest
 from src.services.xml_generation import XMLGenerationService, CountrySchema
 from src.models.product_match import ProductMatch
 
@@ -39,7 +40,7 @@ try:
 except ImportError:
     # If WebSocket manager not available, create a dummy one
     class DummyWSManager:
-        async def send_processing_update(self, *args, **kwargs):
+        async def send_job_update(self, *args, **kwargs):
             pass
     ws_manager = DummyWSManager()
 
@@ -1033,7 +1034,7 @@ class FileProcessingService:
         
         try:
             # WebSocket: Notify file processing started
-            await ws_manager.send_processing_update(
+            await ws_manager.send_job_update(
                 job_id="pending",
                 user_id=str(user.id),
                 status="STARTED",
@@ -1042,7 +1043,7 @@ class FileProcessingService:
             )
             
             # Step 1: Validate file upload
-            await ws_manager.send_processing_update(
+            await ws_manager.send_job_update(
                 job_id="pending",
                 user_id=str(user.id),
                 status="VALIDATING",
@@ -1052,7 +1053,7 @@ class FileProcessingService:
             
             validation_result = await self.validate_file_upload(file)
             if not validation_result.is_valid:
-                await ws_manager.send_processing_update(
+                await ws_manager.send_job_update(
                     job_id="pending",
                     user_id=str(user.id),
                     status="FAILED",
@@ -1066,7 +1067,7 @@ class FileProcessingService:
                 }
             
             # Step 2: Check user credits
-            await ws_manager.send_processing_update(
+            await ws_manager.send_job_update(
                 job_id="pending",
                 user_id=str(user.id),
                 status="CHECKING_CREDITS",
@@ -1078,7 +1079,7 @@ class FileProcessingService:
             credit_check = self.check_user_credits(user, estimated_credits)
             
             if not credit_check['has_sufficient_credits']:
-                await ws_manager.send_processing_update(
+                await ws_manager.send_job_update(
                     job_id="pending",
                     user_id=str(user.id),
                     status="FAILED",
@@ -1100,7 +1101,7 @@ class FileProcessingService:
                 }
             
             # Step 4: Upload file to S3
-            await ws_manager.send_processing_update(
+            await ws_manager.send_job_update(
                 job_id="pending",
                 user_id=str(user.id),
                 status="UPLOADING",
@@ -1113,7 +1114,7 @@ class FileProcessingService:
             except Exception as e:
                 # Refund credits if S3 upload fails
                 self.refund_user_credits(user, estimated_credits)
-                await ws_manager.send_processing_update(
+                await ws_manager.send_job_update(
                     job_id="pending",
                     user_id=str(user.id),
                     status="FAILED",
@@ -1126,7 +1127,7 @@ class FileProcessingService:
                 }
             
             # Step 5: Create processing job
-            await ws_manager.send_processing_update(
+            await ws_manager.send_job_update(
                 job_id="pending",
                 user_id=str(user.id),
                 status="CREATING_JOB",
@@ -1145,7 +1146,7 @@ class FileProcessingService:
             )
             
             # Update WebSocket with actual job ID
-            await ws_manager.send_processing_update(
+            await ws_manager.send_job_update(
                 job_id=str(processing_job.id),
                 user_id=str(user.id),
                 status="PARSING",
@@ -1181,7 +1182,7 @@ class FileProcessingService:
                 }
             
             # Step 7: Process products with HS code matching
-            await ws_manager.send_processing_update(
+            await ws_manager.send_job_update(
                 job_id=str(processing_job.id),
                 user_id=str(user.id),
                 status="HS_MATCHING",
@@ -1197,7 +1198,7 @@ class FileProcessingService:
                 )
                 
                 # Step 8: Generate XML file after successful HS matching
-                await ws_manager.send_processing_update(
+                await ws_manager.send_job_update(
                     job_id=str(processing_job.id),
                     user_id=str(user.id),
                     status="GENERATING_XML",
@@ -1277,7 +1278,7 @@ class FileProcessingService:
                 if xml_errors:
                     final_message = f"Processing completed with warnings: {xml_errors[0]}"
                 
-                await ws_manager.send_processing_update(
+                await ws_manager.send_job_update(
                     job_id=str(processing_job.id),
                     user_id=str(user.id),
                     status=final_status,

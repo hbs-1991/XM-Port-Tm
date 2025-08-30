@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
-from src.api.v1 import auth, processing, admin, users, xml_generation, ws
+from src.api.v1 import auth, processing, admin, users, xml_generation, hs_matching, ws
 from src.core.config import settings
 from src.middleware.security_headers import SecurityHeadersMiddleware
 
@@ -53,6 +53,7 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(processing.router, prefix="/api/v1/processing", tags=["processing"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(xml_generation.router, prefix="/api/v1", tags=["xml-generation"])
+app.include_router(hs_matching.router, prefix="/api/v1/hs-codes", tags=["hs-matching"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(ws.router, prefix="/api/v1/ws", tags=["websocket"])
 

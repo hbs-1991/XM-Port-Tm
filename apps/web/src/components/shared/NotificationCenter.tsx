@@ -2,14 +2,14 @@
 
 import React from 'react'
 import { X, CheckCircle, AlertTriangle, Info, AlertCircle, Clock } from 'lucide-react'
-import { WebSocketNotification } from '@/hooks/useProcessingUpdates'
+import { NotificationMessage } from '@/services/websocketService'
 import { Badge } from '@/components/shared/ui'
 import { Button } from '@/components/shared/ui'
 import { Card, CardContent } from '@/components/shared/ui'
 import { format } from 'date-fns'
 
 interface NotificationCenterProps {
-  notifications: WebSocketNotification[]
+  notifications: NotificationMessage[]
   onClearNotifications: () => void
   isConnected: boolean
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -107,7 +107,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {notifications.slice(0, 5).map((notification, index) => {
-                const config = levelConfig[notification.level]
+                const config = levelConfig[notification.level as keyof typeof levelConfig]
                 const Icon = config.icon
 
                 return (

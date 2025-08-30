@@ -432,10 +432,10 @@ export const EnhancedJobsTable: React.FC<EnhancedJobsTableProps> = ({
   return (
     <div className={clsx('space-y-4', className)} role="region" aria-label="Jobs table">
       {/* Header with connection status */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-6 py-3">
         <div>
           <h3 className="text-lg font-semibold">Processing Jobs</h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1">
             {filteredAndSortedJobs.length} jobs found
             {activeFiltersCount > 0 && ` (${activeFiltersCount} filters active)`}
           </p>

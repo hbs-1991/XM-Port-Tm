@@ -5,19 +5,17 @@ import time
 import logging
 from datetime import datetime
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.core.auth import get_current_active_user
 from src.models.user import User
-from src.services.hs_matching_service import (
-    hs_matching_service, 
-    HSCodeMatchRequest,
-    HSCodeBatchMatchRequest
-)
+from src.services.hs_matching_service import hs_matching_service
 from src.services.analytics_service import analytics_service
 from src.schemas.hs_matching import (
+    HSCodeMatchRequest,
+    HSCodeBatchMatchRequest,
     HSCodeMatchRequestAPI,
     HSCodeBatchMatchRequestAPI,
     HSCodeSearchRequest,
@@ -47,6 +45,7 @@ limiter = Limiter(key_func=get_user_id_from_request)
 @router.post("/match", response_model=HSCodeMatchResponse)
 @limiter.limit("20 per minute")  # Limit to 20 HS code matches per minute per user
 async def match_single_product(
+    http_request: Request,
     request: HSCodeMatchRequestAPI,
     current_user: User = Depends(get_current_active_user)
 ):
@@ -115,6 +114,7 @@ async def match_single_product(
 @router.post("/batch-match", response_model=HSCodeBatchMatchResponse)
 @limiter.limit("5 per minute")  # Limit batch requests to 5 per minute per user
 async def match_batch_products(
+    http_request: Request,
     request: HSCodeBatchMatchRequestAPI,
     current_user: User = Depends(get_current_active_user)
 ):
@@ -189,6 +189,7 @@ async def match_batch_products(
 @router.get("/search", response_model=HSCodeSearchResponse)
 @limiter.limit("30 per minute")  # Limit search requests to 30 per minute per user
 async def search_hs_codes(
+    http_request: Request,
     request: HSCodeSearchRequest = Depends(),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -409,6 +410,7 @@ async def invalidate_cache(
 @router.get("/analytics/metrics", response_model=MatchingMetricsResponse)
 @limiter.limit("10 per minute")  # Limit analytics requests
 async def get_matching_metrics(
+    request: Request,
     days: int = 7,
     include_real_time: bool = True,
     current_user: User = Depends(get_current_active_user)
@@ -471,6 +473,7 @@ async def get_matching_metrics(
 @router.get("/analytics/usage", response_model=UsageAnalyticsResponse)
 @limiter.limit("10 per minute")
 async def get_usage_analytics(
+    request: Request,
     days: int = 30,
     current_user: User = Depends(get_current_active_user)
 ):
@@ -527,6 +530,7 @@ async def get_usage_analytics(
 @router.get("/analytics/performance", response_model=PerformanceMetricsResponse)
 @limiter.limit("20 per minute")  # Allow more frequent performance checks
 async def get_performance_metrics(
+    request: Request,
     minutes: int = 60,
     current_user: User = Depends(get_current_active_user)
 ):
@@ -583,6 +587,7 @@ async def get_performance_metrics(
 @router.get("/analytics/confidence", response_model=ConfidenceAnalysisResponse)
 @limiter.limit("10 per minute")
 async def get_confidence_analysis(
+    request: Request,
     days: int = 7,
     current_user: User = Depends(get_current_active_user)
 ):
@@ -627,7 +632,10 @@ async def get_confidence_analysis(
 
 @router.get("/analytics/system-health", response_model=SystemHealthResponse)
 @limiter.limit("30 per minute")  # Allow frequent health checks
-async def get_system_health(current_user: User = Depends(get_current_active_user)):
+async def get_system_health(
+    request: Request,
+    current_user: User = Depends(get_current_active_user)
+):
     """
     Get comprehensive system health metrics for HS code matching operations.
     

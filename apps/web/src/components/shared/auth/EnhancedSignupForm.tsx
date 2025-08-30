@@ -193,12 +193,12 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
   }
 
   const completedFields = Object.entries(formData).filter(([key, value]) => {
-    if (key === 'companyName') return true // Optional field
+    if (key === 'companyName') return false // Optional field, don't count
     return value.trim().length > 0 && getFieldSuccess(key as keyof SignupFormData)
   }).length
 
   const totalRequiredFields = 5 // firstName, lastName, email, password, confirmPassword
-  const progressPercentage = Math.round((completedFields / totalRequiredFields) * 100)
+  const progressPercentage = Math.min(100, Math.round((completedFields / totalRequiredFields) * 100))
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-white to-purple-50">

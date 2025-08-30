@@ -1,6 +1,7 @@
 """
 WebSocket API endpoints for real-time processing updates
 """
+import asyncio
 import json
 import logging
 import time
@@ -48,20 +49,100 @@ class ConnectionManager:
             for connection in disconnected:
                 self.active_connections[user_id].discard(connection)
 
-    async def send_processing_update(self, job_id: str, user_id: str, status: str, progress: int = 0, message: str = "", data: dict = None):
-        """Send processing update to user"""
+    async def send_job_update(self, job_id: str, user_id: str, status: str, progress: int = 0, message: str = "", data: dict = None):
+        """Send job update to user"""
         update_message = {
-            "type": "processing_update",
-            "job_id": job_id,
-            "status": status,
-            "progress": progress,
-            "message": message,
-            "timestamp": int(time.time() * 1000),  # Milliseconds
-            "data": data or {}
+            "type": "job_update",
+            "data": {
+                "jobId": job_id,
+                "status": status,
+                "progress": progress,
+                "errorMessage": message if status == "failed" else None,
+                "completedAt": data.get("completedAt") if data else None,
+                "productsCount": data.get("productsCount") if data else None,
+                "confidenceScore": data.get("confidenceScore") if data else None,
+            }
         }
         await self.send_personal_message(update_message, user_id)
 
 manager = ConnectionManager()
+
+
+@router.websocket("/jobs")
+async def websocket_job_updates(
+    websocket: WebSocket,
+    token: str = None,
+    db: Session = Depends(get_db)
+):
+    """WebSocket endpoint for real-time job updates"""
+    logger.info(f"WebSocket jobs connection attempt - Token present: {bool(token)}")
+    
+    try:
+        # Authenticate user via token
+        user = None
+        if token:
+            try:
+                user = await get_current_user_ws(token)
+                user_id = str(user.id)
+                logger.info(f"WebSocket jobs authenticated for user {user_id}")
+            except Exception as e:
+                logger.error(f"WebSocket jobs authentication failed: {e}")
+                await websocket.close(code=4001, reason="Authentication failed")
+                return
+        else:
+            logger.warning("WebSocket jobs connection attempt without token")
+            await websocket.close(code=4001, reason="Authentication required")
+            return
+        
+        await manager.connect(websocket, user_id)
+        
+        try:
+            # Send initial connection confirmation
+            await websocket.send_text(json.dumps({"type": "connected", "message": "WebSocket jobs connected successfully"}))
+            
+            while True:
+                try:
+                    # Keep connection alive and handle any client messages with timeout
+                    data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                    logger.info(f"Received message from jobs WebSocket: {data}")
+                    
+                    # Parse and handle the message
+                    try:
+                        message = json.loads(data)
+                        if message.get("type") == "ping":
+                            await websocket.send_text(json.dumps({"type": "pong", "message": "Connection alive"}))
+                        else:
+                            # Handle other message types as needed
+                            await websocket.send_text(json.dumps({"type": "ack", "message": "Message received"}))
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid JSON received: {data}")
+                        await websocket.send_text(json.dumps({"type": "error", "message": "Invalid JSON format"}))
+                    except Exception as send_error:
+                        logger.error(f"Error sending WebSocket response: {send_error}")
+                        break
+                        
+                except asyncio.TimeoutError:
+                    # Send ping to keep connection alive every 30 seconds
+                    try:
+                        await websocket.send_text(json.dumps({"type": "ping", "message": "Keep alive"}))
+                    except Exception as ping_error:
+                        logger.error(f"Error sending ping: {ping_error}")
+                        break
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in jobs WebSocket loop: {e}")
+                    break
+                
+        except WebSocketDisconnect:
+            logger.info(f"WebSocket jobs disconnected for user {user_id}")
+            manager.disconnect(websocket, user_id)
+            
+    except Exception as e:
+        logger.error(f"WebSocket jobs error: {e}")
+        try:
+            await websocket.close(code=1011, reason="Internal server error")
+        except:
+            pass
 
 
 @router.websocket("/processing-updates")
@@ -71,7 +152,7 @@ async def websocket_processing_updates(
     db: Session = Depends(get_db)
 ):
     """WebSocket endpoint for real-time processing updates"""
-    logger.info(f"WebSocket connection attempt - Token present: {bool(token)}")
+    logger.info(f"WebSocket processing-updates connection attempt - Token present: {bool(token)}")
     
     try:
         # Authenticate user via token
@@ -80,30 +161,61 @@ async def websocket_processing_updates(
             try:
                 user = await get_current_user_ws(token)
                 user_id = str(user.id)
-                logger.info(f"WebSocket authenticated for user {user_id}")
+                logger.info(f"WebSocket processing-updates authenticated for user {user_id}")
             except Exception as e:
-                logger.error(f"WebSocket authentication failed: {e}")
+                logger.error(f"WebSocket processing-updates authentication failed: {e}")
                 await websocket.close(code=4001, reason="Authentication failed")
                 return
         else:
-            logger.warning("WebSocket connection attempt without token")
+            logger.warning("WebSocket processing-updates connection attempt without token")
             await websocket.close(code=4001, reason="Authentication required")
             return
         
         await manager.connect(websocket, user_id)
         
         try:
+            # Send initial connection confirmation
+            await websocket.send_text(json.dumps({"type": "connected", "message": "WebSocket processing-updates connected successfully"}))
+            
             while True:
-                # Keep connection alive and handle any client messages
-                data = await websocket.receive_text()
-                # Echo received message or handle ping/pong
-                await websocket.send_text(json.dumps({"type": "pong", "message": "Connection alive"}))
+                try:
+                    # Keep connection alive and handle any client messages with timeout
+                    data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                    logger.info(f"Received message from processing-updates WebSocket: {data}")
+                    
+                    # Parse and handle the message
+                    try:
+                        message = json.loads(data)
+                        if message.get("type") == "ping":
+                            await websocket.send_text(json.dumps({"type": "pong", "message": "Connection alive"}))
+                        else:
+                            # Handle other message types as needed
+                            await websocket.send_text(json.dumps({"type": "ack", "message": "Message received"}))
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid JSON received: {data}")
+                        await websocket.send_text(json.dumps({"type": "error", "message": "Invalid JSON format"}))
+                    except Exception as send_error:
+                        logger.error(f"Error sending WebSocket response: {send_error}")
+                        break
+                        
+                except asyncio.TimeoutError:
+                    # Send ping to keep connection alive every 30 seconds
+                    try:
+                        await websocket.send_text(json.dumps({"type": "ping", "message": "Keep alive"}))
+                    except Exception as ping_error:
+                        logger.error(f"Error sending ping: {ping_error}")
+                        break
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in processing-updates WebSocket loop: {e}")
+                    break
                 
         except WebSocketDisconnect:
+            logger.info(f"WebSocket processing-updates disconnected for user {user_id}")
             manager.disconnect(websocket, user_id)
             
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.error(f"WebSocket processing-updates error: {e}")
         try:
             await websocket.close(code=1011, reason="Internal server error")
         except:

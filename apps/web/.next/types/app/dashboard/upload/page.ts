@@ -1,4 +1,4 @@
-// File: /mnt/d/PROJECTS/XM-PORT/apps/web/src/app/dashboard/upload/page.tsx
+// File: /home/beza91/projects/XM-PORT/apps/web/src/app/dashboard/upload/page.tsx
 import * as entry from '../../../../../src/app/dashboard/upload/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
