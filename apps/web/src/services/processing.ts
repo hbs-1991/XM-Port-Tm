@@ -15,8 +15,18 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-interface UploadResponse extends ProcessingJob {
+interface UploadResponse {
+  job_id: string;
+  file_name: string;
+  file_size: number;
+  status: string;
+  message: string;
+  validation_results?: any;
   previewData?: any[];
+  // Optional fields that may be returned
+  credits_used?: number;
+  total_products?: number;
+  successful_matches?: number;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -57,11 +67,20 @@ class ProcessingService {
     countrySchema, 
     onProgress 
   }: UploadFileParams): Promise<UploadResponse> {
+    return this.uploadFileWithRetry({ file, fileId, countrySchema, onProgress }, 3);
+  }
+
+  private async uploadFileWithRetry(
+    params: UploadFileParams, 
+    maxRetries: number,
+    currentAttempt: number = 1
+  ): Promise<UploadResponse> {
     // Get auth token first
     const { getSession } = await import('next-auth/react');
     const session = await getSession();
     
     return new Promise((resolve, reject) => {
+      const { file, fileId, countrySchema, onProgress } = params;
       const formData = new FormData();
       formData.append('file', file);
       formData.append('country_schema', countrySchema);
@@ -81,9 +100,38 @@ class ProcessingService {
           if (xhr.status === 200 || xhr.status === 201) {
             const response = JSON.parse(xhr.responseText);
             resolve(response);
-          } else {
+          } else if (xhr.status === 409 && currentAttempt < maxRetries) {
+            // Handle 409 Conflict with exponential backoff retry
             const errorResponse = JSON.parse(xhr.responseText);
-            reject(new Error(errorResponse.message || `Upload failed with status ${xhr.status}`));
+            const isRetryable = errorResponse.detail?.error === 'credit_reservation_conflict' || 
+                              errorResponse.detail?.retry_suggested;
+            
+            if (isRetryable) {
+              const delay = Math.min(1000 * Math.pow(2, currentAttempt - 1), 5000); // Max 5s delay
+              console.log(`Upload conflict detected, retrying in ${delay}ms (attempt ${currentAttempt + 1}/${maxRetries})`);
+              
+              setTimeout(() => {
+                this.uploadFileWithRetry(params, maxRetries, currentAttempt + 1)
+                  .then(resolve)
+                  .catch(reject);
+              }, delay);
+              return;
+            }
+            
+            // Not retryable 409 error
+            const errorMessage = errorResponse.detail?.message || errorResponse.message || `Upload failed with status ${xhr.status}`;
+            reject(new Error(errorMessage));
+          } else {
+            // Parse error response for better error messages
+            try {
+              const errorResponse = JSON.parse(xhr.responseText);
+              const errorMessage = errorResponse.detail?.message || 
+                                 errorResponse.message || 
+                                 `Upload failed with status ${xhr.status}`;
+              reject(new Error(errorMessage));
+            } catch {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
           }
         } catch (error) {
           reject(new Error('Failed to parse server response'));

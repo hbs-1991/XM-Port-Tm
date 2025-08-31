@@ -37,6 +37,7 @@ interface UploadedFile {
   validationResult?: any;
   xmlGenerating?: boolean;
   xmlDownloadUrl?: string;
+  canRetry?: boolean;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -46,7 +47,7 @@ const ACCEPTED_TYPES = {
   'application/vnd.ms-excel': ['.xls']
 };
 
-export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: FileUploadProps) {
+export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const queryClient = useQueryClient();
 
@@ -54,11 +55,30 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
   const uploadMutation = useMutation({
     mutationFn: uploadFile,
     onSuccess: (data, variables) => {
+      console.log('Upload success data:', data, 'variables:', variables);
       const fileId = variables.fileId;
       const uploadedFile = uploadedFiles.find(f => f.id === fileId);
       
       // Preserve existing preview data if server doesn't return any
-      const finalPreviewData = data.previewData || uploadedFile?.previewData || [];
+      const finalPreviewData = (data as any)?.previewData || uploadedFile?.previewData || [];
+      
+      // Transform FileUploadResponse to ProcessingJob format
+      const uploadResponse = data as any;
+      const transformedJob: ProcessingJob = {
+        id: uploadResponse.job_id || '',
+        status: uploadResponse.status as ProcessingStatus,
+        input_file_name: uploadResponse.file_name || '',
+        input_file_size: uploadResponse.file_size || 0,
+        credits_used: uploadResponse.credits_used || 1,
+        total_products: uploadResponse.total_products || 0,
+        successful_matches: uploadResponse.successful_matches || 0,
+        country_schema: countrySchema || 'USA',
+        created_at: new Date().toISOString(),
+        // Add other required fields with defaults
+        userId: '',
+        processing_time_ms: 0,
+        average_confidence: 0
+      };
       
       setUploadedFiles(prev => 
         prev.map(f => 
@@ -67,23 +87,58 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
                 ...f, 
                 status: 'completed' as const, 
                 progress: 100, 
-                job: data as ProcessingJob, 
+                job: transformedJob, 
                 previewData: finalPreviewData 
               }
             : f
         )
       );
       
-      console.log('Upload completed, preview data:', finalPreviewData);
-      onUploadComplete?.(data as ProcessingJob);
+      console.log('Upload completed, transformed job:', transformedJob, 'preview data:', finalPreviewData);
+      onUploadComplete?.(transformedJob);
     },
     onError: (error: any, variables) => {
       const fileId = variables.fileId;
-      const errorMessage = error.response?.data?.message || error.message || 'Upload failed';
+      
+      // Parse error message more intelligently
+      let errorMessage = 'Upload failed';
+      let isRetryable = false;
+      
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (detail.message) {
+          errorMessage = detail.message;
+          isRetryable = detail.retry_suggested || detail.error === 'credit_reservation_conflict';
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+        // Check if it's a retryable error based on message content
+        isRetryable = errorMessage.includes('try again') || errorMessage.includes('concurrent requests');
+      }
+      
+      // Format user-friendly error messages
+      if (errorMessage.includes('insufficient_credits') || errorMessage.includes('Insufficient credits')) {
+        errorMessage = 'Insufficient credits. Please check your balance or upgrade your plan.';
+      } else if (errorMessage.includes('credit_reservation_conflict')) {
+        errorMessage = 'Upload temporarily unavailable due to high demand. Please try again in a moment.';
+        isRetryable = true;
+      } else if (errorMessage.includes('concurrent requests')) {
+        errorMessage = 'Multiple uploads detected. Please wait and try again.';
+        isRetryable = true;
+      }
+      
       setUploadedFiles(prev => 
         prev.map(f => 
           f.id === fileId 
-            ? { ...f, status: 'error', error: errorMessage }
+            ? { 
+                ...f, 
+                status: 'error', 
+                error: errorMessage,
+                // Add a retry flag for UI to show retry button
+                ...(isRetryable && { canRetry: true })
+              }
             : f
         )
       );
@@ -749,18 +804,17 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
                               readOnly={uploadedFile.status !== 'completed'} // Make it read-only until upload completes
                             />
                             
-                            {/* Processing Actions - Show after data preview */}
-                            {(uploadedFile.status === 'validated' || uploadedFile.status === 'completed') && (
+                            {/* Processing Actions - Only show after successful upload */}
+                            {uploadedFile.status === 'completed' && uploadedFile.job && (
                               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border">
                                 <h6 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                                  <div className={`w-2 h-2 rounded-full ${uploadedFile.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                                  {uploadedFile.status === 'completed' ? 'Next Steps: Process Your Data' : 'Available After Upload'}
+                                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                  Next Steps: Process Your Data
                                 </h6>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                   <Button
                                     onClick={() => uploadedFile.job && initiateHSMatching(uploadedFile.job.id)}
-                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out disabled:bg-gray-400 disabled:text-gray-600 disabled:hover:bg-gray-400"
-                                    disabled={!uploadedFile.job}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out"
                                     size="lg"
                                   >
                                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -770,8 +824,8 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
                                   </Button>
                                   <Button
                                     onClick={() => uploadedFile.job && initiateXMLGeneration(uploadedFile.job.id)}
-                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out disabled:bg-gray-400 disabled:text-gray-600 disabled:hover:bg-gray-400"
-                                    disabled={!uploadedFile.job || uploadedFile.xmlGenerating}
+                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out"
+                                    disabled={uploadedFile.xmlGenerating}
                                     size="lg"
                                   >
                                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -780,18 +834,6 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
                                     {uploadedFile.xmlGenerating ? 'Generating XML...' : 'Generate XML File'}
                                   </Button>
                                 </div>
-                                
-                                {/* Show preview message when not yet uploaded */}
-                                {uploadedFile.status === 'validated' && (
-                                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                                    <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                      </svg>
-                                      These actions will be available after you upload the file for processing.
-                                    </p>
-                                  </div>
-                                )}
                                 
                                 {/* XML Download Button */}
                                 {uploadedFile.xmlDownloadUrl && (
@@ -808,6 +850,25 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'US' }: 
                                     </Button>
                                   </div>
                                 )}
+                              </div>
+                            )}
+                            
+                            {/* Show message when file is validated but not yet uploaded */}
+                            {uploadedFile.status === 'validated' && (
+                              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-start gap-3">
+                                  <svg className="w-5 h-5 mt-0.5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <div>
+                                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                                      File Ready for Upload
+                                    </p>
+                                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                                      Your file has been validated successfully. Click the "Upload File for Processing" button above to enable HS Code matching and XML generation features.
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>

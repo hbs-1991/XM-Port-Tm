@@ -39,11 +39,20 @@ async def upload_file(
     try:
         # Create a synchronous database session for file processing
         with sync_session_maker() as db:
+            # Re-fetch the user in the current session to avoid session issues
+            from src.models.user import User as UserModel
+            user_in_session = db.query(UserModel).filter(UserModel.id == current_user.id).first()
+            if not user_in_session:
+                raise HTTPException(
+                    status_code=401,
+                    detail="User not found in current session"
+                )
+            
             # Initialize file processing service
             file_service = FileProcessingService(db)
             
             # Check user credits before processing
-            credit_check = file_service.check_user_credits(current_user, estimated_credits=1)
+            credit_check = file_service.check_user_credits(user_in_session, estimated_credits=1)
             if not credit_check['has_sufficient_credits']:
                 raise HTTPException(
                     status_code=402,  # Payment Required
@@ -74,7 +83,7 @@ async def upload_file(
             
             # Re-check credits with actual requirement
             if required_credits > 1:  # If more credits needed than initially estimated
-                credit_check = file_service.check_user_credits(current_user, required_credits)
+                credit_check = file_service.check_user_credits(user_in_session, required_credits)
                 if not credit_check['has_sufficient_credits']:
                     raise HTTPException(
                         status_code=402,  # Payment Required
@@ -89,31 +98,80 @@ async def upload_file(
                     )
             
             # Reserve credits atomically before processing
-            if not file_service.reserve_user_credits(current_user, required_credits):
-                raise HTTPException(
-                    status_code=409,  # Conflict
-                    detail={
-                        "error": "credit_reservation_failed",
-                        "message": "Unable to reserve credits. Please try again or check your balance.",
-                        "credits_required": required_credits
-                    }
-                )
+            if not file_service.reserve_user_credits(user_in_session, required_credits):
+                # Refresh user data to get current balance
+                db.refresh(user_in_session)
+                
+                # Provide specific error message based on current balance
+                if user_in_session.credits_remaining < required_credits:
+                    raise HTTPException(
+                        status_code=402,  # Payment Required
+                        detail={
+                            "error": "insufficient_credits",
+                            "message": f"Insufficient credits. You have {user_in_session.credits_remaining} credits but need {required_credits} for this file.",
+                            "credits_remaining": user_in_session.credits_remaining,
+                            "credits_required": required_credits,
+                            "subscription_tier": user_in_session.subscription_tier.value
+                        }
+                    )
+                else:
+                    # Credits were available but reservation failed due to concurrency
+                    raise HTTPException(
+                        status_code=409,  # Conflict
+                        detail={
+                            "error": "credit_reservation_conflict",
+                            "message": "Credit reservation failed due to concurrent requests. Please try again in a moment.",
+                            "credits_required": required_credits,
+                            "retry_suggested": True
+                        }
+                    )
             
             # Upload file to S3 (if configured)
             try:
-                file_url = await file_service.upload_file_to_s3(file, str(current_user.id))
+                file_url = await file_service.upload_file_to_s3(file, str(user_in_session.id))
             except HTTPException as e:
-                # Check if fallback is allowed and we're not in production
-                if ("S3 configuration not available" in str(e.detail) and 
+                # Check if this is an S3-related error and fallback is allowed
+                error_detail_str = str(e.detail)
+                s3_error_indicators = [
+                    "S3 configuration not available",
+                    "AWS credentials not configured", 
+                    "S3 upload failed",
+                    "InvalidAccessKeyId",
+                    "AccessDenied",
+                    "NoSuchBucket",
+                    "NoCredentialsError",
+                    "CredentialsError",
+                    "BotoCoreError",
+                    "EndpointConnectionError"
+                ]
+                
+                # More robust S3 error detection
+                is_s3_error = (
+                    any(indicator in error_detail_str for indicator in s3_error_indicators) or
+                    "S3 upload failed:" in error_detail_str or
+                    e.status_code == 500 and "S3" in error_detail_str
+                )
+                
+                # Debug logging for S3 errors
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"S3 upload error detected - Status: {e.status_code}, "
+                    f"Detail: {error_detail_str}, "
+                    f"Is S3 Error: {is_s3_error}, "
+                    f"Fallback Enabled: {settings.ALLOW_S3_FALLBACK}, "
+                    f"Is Production: {settings.is_production}"
+                )
+                
+                if (is_s3_error and 
                     settings.ALLOW_S3_FALLBACK and 
                     not settings.is_production):
                     # Development fallback to local storage - NOT production ready
-                    file_url = f"local://uploads/{current_user.id}/{file.filename}"
+                    file_url = f"local://uploads/{user_in_session.id}/{file.filename}"
                     # Log warning about using fallback
-                    import logging
-                    logging.warning(
+                    logger.warning(
                         f"Using local storage fallback for file upload. "
-                        f"File: {file.filename}, User: {current_user.id}. "
+                        f"S3 Error: {error_detail_str}. File: {file.filename}, User: {user_in_session.id}. "
                         f"This is not suitable for production use."
                     )
                 else:
@@ -123,7 +181,7 @@ async def upload_file(
             # Create processing job with credit information
             try:
                 processing_job = file_service.create_processing_job(
-                    user=current_user,
+                    user=user_in_session,
                     file_name=file.filename,
                     file_url=file_url,
                     file_size=file.size or 0,
@@ -133,7 +191,7 @@ async def upload_file(
                 )
             except Exception as e:
                 # If job creation fails, refund credits
-                file_service.refund_user_credits(current_user, required_credits)
+                file_service.refund_user_credits(user_in_session, required_credits)
                 raise HTTPException(
                     status_code=500,
                     detail=f"Failed to create processing job: {str(e)}"
@@ -181,6 +239,15 @@ async def validate_file_only(
     try:
         # Create a synchronous database session for file processing
         with sync_session_maker() as db:
+            # Re-fetch the user in the current session to avoid session issues
+            from src.models.user import User as UserModel
+            user_in_session = db.query(UserModel).filter(UserModel.id == current_user.id).first()
+            if not user_in_session:
+                raise HTTPException(
+                    status_code=401,
+                    detail="User not found in current session"
+                )
+            
             # Initialize file processing service
             file_service = FileProcessingService(db)
             
@@ -581,10 +648,19 @@ async def process_file_with_hs_matching(
         # Initialize file processing service
         file_service = FileProcessingService(db)
         
+        # Re-fetch user in current session for consistency
+        from src.models.user import User as UserModel
+        user_in_session = db.query(UserModel).filter(UserModel.id == current_user.id).first()
+        if not user_in_session:
+            raise HTTPException(
+                status_code=401,
+                detail="User not found in current session"
+            )
+        
         # Execute complete processing workflow with HS matching
         result = await file_service.process_file_with_hs_matching(
             file=file,
-            user=current_user,
+            user=user_in_session,
             country_schema=country_schema
         )
         

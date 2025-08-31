@@ -14,8 +14,8 @@ from decimal import Decimal
 from functools import lru_cache
 from collections import deque
 from datetime import datetime, timedelta
+from agents import Agent, FileSearchTool, Runner
 
-from agents import Runner
 from pydantic import BaseModel, Field
 
 from ..core.openai_config import OpenAIAgentConfig, HSCodeResult, HSCodeMatchResult
@@ -99,10 +99,10 @@ class HSCodeMatchingService:
         except Exception as e:
             logger.warning(f"Background cache warming failed: {str(e)}")
     
-    def _get_or_create_agent(self, country: str = "default"):
+    async def _get_or_create_agent(self, country: str = "default"):
         """Get or create an agent for the specified country with caching"""
         if country not in self._agents_cache:
-            self._agents_cache[country] = self.agent_config.create_agent(country)
+            self._agents_cache[country] = await self.agent_config.create_agent(country)
             logger.info(f"Created new agent for country: {country}")
         return self._agents_cache[country]
     
@@ -154,26 +154,17 @@ class HSCodeMatchingService:
         logger.debug(f"Cache miss for product: {product_description[:50]}... Querying OpenAI")
         
         # Get or create agent for country
-        agent = self._get_or_create_agent(country)
+        agent = await self._get_or_create_agent(country)
         
         # Build search query with context
         search_query = self._build_search_query(cleaned_description, include_alternatives)
         
         try:
-            # Execute matching with retry logic
-            primary_result = await self._execute_with_retry(agent, search_query)
+            # Use the enhanced OpenAI Agents SDK matching
+            processed_result = await self.agent_config.match_hs_code(cleaned_description, country)
             
-            # Calculate processing time
-            processing_time = (time.time() - start_time) * 1000  # Convert to milliseconds
-            
-            # Process and validate results
-            processed_result = self._process_matching_result(
-                primary_result, 
-                cleaned_description, 
-                processing_time,
-                confidence_threshold,
-                include_alternatives
-            )
+            # Update processing time if needed
+            processing_time = processed_result.processing_time_ms
             
             # Cache the result for future use
             cache_success = await cache_service.cache_match_result(
@@ -323,50 +314,8 @@ class HSCodeMatchingService:
             logger.error(f"Batch matching failed: {str(e)}")
             raise
     
-    async def _execute_with_retry(self, agent, query: str) -> HSCodeResult:
-        """Execute agent query with retry logic, timeout, and connection pooling"""
-        last_exception = None
-        
-        # Use request semaphore for connection pooling
-        async with self._request_semaphore:
-            for attempt in range(self.MAX_RETRY_ATTEMPTS):
-                try:
-                    # Add to request queue for monitoring
-                    request_id = f"{time.time()}_{hash(query)}"
-                    self._request_queue.append((request_id, time.time()))
-                    
-                    # Execute with reduced timeout for faster failures
-                    result = await asyncio.wait_for(
-                        Runner.run(agent, query),
-                        timeout=self.TIMEOUT_SECONDS
-                    )
-                    
-                    if result and hasattr(result, 'final_output'):
-                        return result.final_output
-                    else:
-                        raise ValueError("Invalid response format from OpenAI Agent")
-                        
-                except asyncio.TimeoutError as e:
-                    last_exception = e
-                    logger.warning(f"Timeout on attempt {attempt + 1}/{self.MAX_RETRY_ATTEMPTS} (queue size: {len(self._request_queue)})")
-                    if attempt < self.MAX_RETRY_ATTEMPTS - 1:
-                        # Exponential backoff with jitter
-                        backoff = self.RETRY_DELAY_SECONDS * (2 ** attempt) + (hash(query) % 1000) / 1000
-                        await asyncio.sleep(min(backoff, 5.0))  # Cap at 5 seconds
-                        
-                except Exception as e:
-                    last_exception = e
-                    logger.warning(f"Error on attempt {attempt + 1}/{self.MAX_RETRY_ATTEMPTS}: {str(e)}")
-                    if attempt < self.MAX_RETRY_ATTEMPTS - 1:
-                        # Exponential backoff with jitter
-                        backoff = self.RETRY_DELAY_SECONDS * (2 ** attempt) + (hash(query) % 1000) / 1000
-                        await asyncio.sleep(min(backoff, 5.0))
-        
-        # All retries failed
-        if isinstance(last_exception, asyncio.TimeoutError):
-            raise TimeoutError(f"HS code matching timed out after {self.MAX_RETRY_ATTEMPTS} attempts")
-        else:
-            raise ConnectionError(f"Failed to connect to OpenAI API: {str(last_exception)}")
+    # Note: _execute_with_retry method removed as retry logic is now handled 
+    # by the OpenAIAgentConfig.match_hs_code method
     
     def _clean_product_description(self, description: str) -> str:
         """Clean and normalize product description for better matching"""
@@ -391,34 +340,8 @@ class HSCodeMatchingService:
         
         return base_query
     
-    def _process_matching_result(
-        self,
-        primary_result: HSCodeResult,
-        original_query: str,
-        processing_time: float,
-        confidence_threshold: float,
-        include_alternatives: bool
-    ) -> HSCodeMatchResult:
-        """Process and validate the matching result from OpenAI Agent"""
-        
-        # Validate primary result confidence
-        if primary_result.confidence < confidence_threshold:
-            logger.warning(f"Primary match confidence {primary_result.confidence:.3f} "
-                          f"below threshold {confidence_threshold}")
-        
-        # For now, we'll work with single result from structured output
-        # Alternative matches would need to be handled differently with current SDK
-        alternatives = []
-        
-        # Create result object
-        result = HSCodeMatchResult(
-            primary_match=primary_result,
-            alternative_matches=alternatives,
-            processing_time_ms=processing_time,
-            query=original_query
-        )
-        
-        return result
+    # Note: _process_matching_result method removed as structured output 
+    # is now handled directly by OpenAIAgentConfig.match_hs_code method
     
     def _create_error_result(self, product_description: str, error_message: str) -> HSCodeMatchResult:
         """Create an error result for failed matches"""
@@ -523,11 +446,9 @@ class HSCodeMatchingService:
             cache_available = await cache_service.is_available()
             
             # Test OpenAI connection with simple query
-            test_agent = self._get_or_create_agent("default")
             start_time = time.time()
-            
-            await asyncio.wait_for(
-                Runner.run(test_agent, "Test connection - find HS code for 'apple'"),
+            test_result = await asyncio.wait_for(
+                self.agent_config.match_hs_code("apple", "default"),
                 timeout=10.0
             )
             
@@ -638,7 +559,7 @@ class HSCodeMatchingService:
         
         # 2. Pre-create agents for known countries
         for country in self.agent_config.get_available_countries():
-            self._get_or_create_agent(country)
+            await self._get_or_create_agent(country)
         results["agents_preloaded"] = len(self._agents_cache)
         
         # 3. Clear old request queue entries

@@ -73,7 +73,7 @@ class HSMatchingService {
   }
 
   async matchSingleProduct(request: HSMatchRequest): Promise<HSMatchResult> {
-    const response = await this.fetchWithAuth('/api/v1/hs-matching/match', {
+    const response = await this.fetchWithAuth('/api/v1/hs-codes/match', {
       method: 'POST',
       body: JSON.stringify(request),
     });
@@ -83,7 +83,7 @@ class HSMatchingService {
   }
 
   async matchBatchProducts(request: HSBatchMatchRequest): Promise<HSMatchResult[]> {
-    const response = await this.fetchWithAuth('/api/v1/hs-matching/batch-match', {
+    const response = await this.fetchWithAuth('/api/v1/hs-codes/batch-match', {
       method: 'POST',
       body: JSON.stringify(request),
     });
@@ -102,7 +102,7 @@ class HSMatchingService {
       params.append('country', country);
     }
 
-    const response = await this.fetchWithAuth(`/api/v1/hs-matching/search?${params}`, {
+    const response = await this.fetchWithAuth(`/api/v1/hs-codes/search?${params}`, {
       method: 'GET',
     });
 
@@ -110,7 +110,7 @@ class HSMatchingService {
   }
 
   async getHealthStatus(): Promise<any> {
-    const response = await this.fetchWithAuth('/api/v1/hs-matching/health', {
+    const response = await this.fetchWithAuth('/api/v1/hs-codes/health', {
       method: 'GET',
     });
 
@@ -118,7 +118,7 @@ class HSMatchingService {
   }
 
   async getCacheStats(): Promise<any> {
-    const response = await this.fetchWithAuth('/api/v1/hs-matching/cache/stats', {
+    const response = await this.fetchWithAuth('/api/v1/hs-codes/cache/stats', {
       method: 'GET',
     });
 

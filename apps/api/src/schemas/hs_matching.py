@@ -48,9 +48,33 @@ class HSCodeMatchRequestAPI(BaseModel):
     )
 
 
+class HSCodeBatchProductRequest(BaseModel):
+    """Individual product request for batch matching"""
+    product_description: str = Field(
+        ..., 
+        min_length=5, 
+        max_length=500, 
+        description="Product description to match against HS codes"
+    )
+    country: Optional[str] = Field(
+        None, 
+        description="Country code for this specific product (overrides batch default)"
+    )
+    include_alternatives: Optional[bool] = Field(
+        None, 
+        description="Whether to include alternative matches for this product"
+    )
+    confidence_threshold: Optional[float] = Field(
+        None, 
+        ge=0.0, 
+        le=1.0, 
+        description="Minimum confidence threshold for this product"
+    )
+
+
 class HSCodeBatchMatchRequestAPI(BaseModel):
     """API request schema for batch HS code matching"""
-    products: List[HSCodeMatchRequestAPI] = Field(
+    products: List[HSCodeBatchProductRequest] = Field(
         ..., 
         min_items=1, 
         max_items=100, 

@@ -575,15 +575,32 @@ class FileProcessingService:
             # Return S3 URL
             return f"s3://{settings.AWS_S3_BUCKET}/{file_key}"
             
-        except NoCredentialsError:
+        except NoCredentialsError as e:
             raise HTTPException(
                 status_code=500,
-                detail="AWS credentials not configured"
+                detail=f"AWS credentials not configured: {str(e)}"
             )
+        except Exception as e:
+            # Catch any other AWS/boto3 related errors
+            if 'botocore' in str(type(e)).lower() or 'aws' in str(e).lower():
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"S3 upload failed: {str(e)}"
+                )
+            else:
+                # Re-raise non-AWS errors
+                raise
         except ClientError as e:
+            # Extract the error code from boto3 ClientError
+            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+            error_message = e.response.get('Error', {}).get('Message', str(e))
+            
+            # Create a detailed error message that includes the error code
+            detailed_error = f"S3 upload failed: {error_code} - {error_message}"
+            
             raise HTTPException(
                 status_code=500,
-                detail=f"S3 upload failed: {str(e)}"
+                detail=detailed_error
             )
 
     def check_user_credits(self, user: User, estimated_credits: int = 1) -> Dict[str, Any]:
@@ -638,7 +655,7 @@ class FileProcessingService:
     
     def reserve_user_credits(self, user: User, credits_to_reserve: int) -> bool:
         """
-        Reserve credits for processing (atomic operation)
+        Reserve credits for processing (atomic operation with proper concurrency handling)
         
         Args:
             user: User object
@@ -647,23 +664,51 @@ class FileProcessingService:
         Returns:
             bool: True if credits were successfully reserved
         """
+        from sqlalchemy.exc import IntegrityError
+        from sqlalchemy import text
+        
         try:
-            # Refresh user data to avoid race conditions
-            self.db.refresh(user)
+            # Use database-level atomic update to prevent race conditions
+            # This updates only if credits are sufficient and returns affected rows
+            result = self.db.execute(
+                text("""
+                    UPDATE users 
+                    SET 
+                        credits_remaining = credits_remaining - :credits_to_reserve,
+                        credits_used_this_month = credits_used_this_month + :credits_to_reserve,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE 
+                        id = :user_id 
+                        AND credits_remaining >= :credits_to_reserve
+                        AND is_active = true
+                """),
+                {
+                    "user_id": user.id,
+                    "credits_to_reserve": credits_to_reserve
+                }
+            )
             
-            # Double-check credits are still available
-            if user.credits_remaining < credits_to_reserve:
+            # Check if any rows were affected (credit reservation successful)
+            rows_affected = result.rowcount
+            
+            if rows_affected == 0:
+                # Either insufficient credits or user not found/inactive
+                self.db.rollback()
                 return False
             
-            # Deduct credits atomically
-            user.credits_remaining -= credits_to_reserve
-            user.credits_used_this_month += credits_to_reserve
-            
+            # Commit the transaction
             self.db.commit()
+            
+            # Refresh user object to reflect the changes
+            self.db.refresh(user)
+            
             return True
             
-        except Exception as e:
+        except (IntegrityError, Exception) as e:
+            # Handle database constraints or other errors
             self.db.rollback()
+            import logging
+            logging.error(f"Credit reservation failed for user {user.id}: {str(e)}")
             return False
     
     def refund_user_credits(self, user: User, credits_to_refund: int) -> bool:
@@ -1111,8 +1156,59 @@ class FileProcessingService:
             
             try:
                 file_url = await self.upload_file_to_s3(file, str(user.id))
+            except HTTPException as e:
+                # Check if this is an S3-related error and fallback is allowed
+                from src.core.config import get_settings
+                settings = get_settings()
+                
+                error_detail_str = str(e.detail)
+                s3_error_indicators = [
+                    "S3 configuration not available",
+                    "AWS credentials not configured", 
+                    "S3 upload failed",
+                    "InvalidAccessKeyId",
+                    "AccessDenied",
+                    "NoSuchBucket",
+                    "NoCredentialsError",
+                    "CredentialsError",
+                    "BotoCoreError",
+                    "EndpointConnectionError"
+                ]
+                
+                # More robust S3 error detection
+                is_s3_error = (
+                    any(indicator in error_detail_str for indicator in s3_error_indicators) or
+                    "S3 upload failed:" in error_detail_str or
+                    e.status_code == 500 and "S3" in error_detail_str
+                )
+                
+                if (is_s3_error and 
+                    settings.ALLOW_S3_FALLBACK and 
+                    not settings.is_production):
+                    # Development fallback to local storage - NOT production ready
+                    file_url = f"local://uploads/{user.id}/{file.filename}"
+                    import logging
+                    logging.warning(
+                        f"Using local storage fallback for file upload in process_file_with_hs_matching. "
+                        f"S3 Error: {error_detail_str}. File: {file.filename}, User: {user.id}. "
+                        f"This is not suitable for production use."
+                    )
+                else:
+                    # Refund credits if S3 upload fails and no fallback
+                    self.refund_user_credits(user, estimated_credits)
+                    await ws_manager.send_job_update(
+                        job_id="pending",
+                        user_id=str(user.id),
+                        status="FAILED",
+                        progress=100,
+                        message=f"File upload failed: {str(e)}"
+                    )
+                    return {
+                        "success": False,
+                        "error": f"File upload failed: {str(e)}"
+                    }
             except Exception as e:
-                # Refund credits if S3 upload fails
+                # Refund credits if S3 upload fails with other errors
                 self.refund_user_credits(user, estimated_credits)
                 await ws_manager.send_job_update(
                     job_id="pending",

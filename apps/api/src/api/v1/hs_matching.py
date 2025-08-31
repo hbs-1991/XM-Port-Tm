@@ -18,6 +18,7 @@ from src.schemas.hs_matching import (
     HSCodeBatchMatchRequest,
     HSCodeMatchRequestAPI,
     HSCodeBatchMatchRequestAPI,
+    HSCodeBatchProductRequest,
     HSCodeSearchRequest,
     HSCodeMatchResponse,
     HSCodeBatchMatchResponse,
@@ -45,8 +46,8 @@ limiter = Limiter(key_func=get_user_id_from_request)
 @router.post("/match", response_model=HSCodeMatchResponse)
 @limiter.limit("20 per minute")  # Limit to 20 HS code matches per minute per user
 async def match_single_product(
-    http_request: Request,
-    request: HSCodeMatchRequestAPI,
+    request: Request,
+    match_request: HSCodeMatchRequestAPI,
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -65,14 +66,14 @@ async def match_single_product(
     start_time = time.time()
     
     try:
-        logger.info(f"HS code match request from user {current_user.id} for product: {request.product_description[:50]}...")
+        logger.info(f"HS code match request from user {current_user.id} for product: {match_request.product_description[:50]}...")
         
         # Convert API request to service request
         service_request = HSCodeMatchRequest(
-            product_description=request.product_description,
-            country=request.country,
-            include_alternatives=request.include_alternatives,
-            confidence_threshold=request.confidence_threshold
+            product_description=match_request.product_description,
+            country=match_request.country,
+            include_alternatives=match_request.include_alternatives,
+            confidence_threshold=match_request.confidence_threshold
         )
         
         # Perform matching using the service
@@ -114,8 +115,8 @@ async def match_single_product(
 @router.post("/batch-match", response_model=HSCodeBatchMatchResponse)
 @limiter.limit("5 per minute")  # Limit batch requests to 5 per minute per user
 async def match_batch_products(
-    http_request: Request,
-    request: HSCodeBatchMatchRequestAPI,
+    request: Request,
+    batch_request: HSCodeBatchMatchRequestAPI,
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -134,16 +135,16 @@ async def match_batch_products(
     start_time = time.time()
     
     try:
-        logger.info(f"Batch HS code match request from user {current_user.id} for {len(request.products)} products")
+        logger.info(f"Batch HS code match request from user {current_user.id} for {len(batch_request.products)} products")
         
         # Convert API requests to service requests
         service_requests = []
-        for product_request in request.products:
+        for product_request in batch_request.products:
             service_request = HSCodeMatchRequest(
                 product_description=product_request.product_description,
-                country=product_request.country or request.country,
-                include_alternatives=product_request.include_alternatives,
-                confidence_threshold=product_request.confidence_threshold
+                country=product_request.country or batch_request.country,
+                include_alternatives=product_request.include_alternatives if product_request.include_alternatives is not None else True,
+                confidence_threshold=product_request.confidence_threshold if product_request.confidence_threshold is not None else 0.7
             )
             service_requests.append(service_request)
         
@@ -189,8 +190,8 @@ async def match_batch_products(
 @router.get("/search", response_model=HSCodeSearchResponse)
 @limiter.limit("30 per minute")  # Limit search requests to 30 per minute per user
 async def search_hs_codes(
-    http_request: Request,
-    request: HSCodeSearchRequest = Depends(),
+    request: Request,
+    search_request: HSCodeSearchRequest = Depends(),
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -209,15 +210,15 @@ async def search_hs_codes(
     start_time = time.time()
     
     try:
-        logger.info(f"HS code search request from user {current_user.id} for query: {request.query}")
+        logger.info(f"HS code search request from user {current_user.id} for query: {search_request.query}")
         
         # For now, implement basic search using the matching service
         # In the future, this could be enhanced with a dedicated search endpoint
         
         # Use the matching service to find relevant HS codes
         search_result = await hs_matching_service.match_single_product(
-            product_description=request.query,
-            country=request.country,
+            product_description=search_request.query,
+            country=search_request.country,
             include_alternatives=True,
             confidence_threshold=0.1  # Lower threshold for search
         )
@@ -248,14 +249,14 @@ async def search_hs_codes(
             ))
         
         # Limit results based on request
-        search_results = search_results[:request.limit]
+        search_results = search_results[:search_request.limit]
         
         logger.info(f"HS code search completed for user {current_user.id}: {len(search_results)} results")
         
         return HSCodeSearchResponse(
             success=True,
             data=search_results,
-            query=request.query,
+            query=search_request.query,
             total_results=len(search_results),
             processing_time_ms=processing_time
         )
