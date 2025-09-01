@@ -11,6 +11,7 @@ import asyncio
 from agents import Agent, FileSearchTool, Runner, set_default_openai_key
 from agents.agent import StopAtTools
 
+
 logger = logging.getLogger(__name__)
 
 # Configure OpenAI API key for agents
@@ -124,11 +125,11 @@ Prioritize accuracy over speed, and provide detailed reasoning for your classifi
             instructions=cls.AGENT_INSTRUCTIONS,
             model=cls.MODEL_NAME,
             tools=[file_search_tool],
-            output_type=HSCodeMatchResult,  # Use enhanced structured output
+            output_type=HSCodeMatchResult,  # Use enhanced structured output            
             model_settings=ModelSettings(
                 temperature=cls.MODEL_TEMPERATURE,
-                max_tokens=1500  # Sufficient tokens for detailed analysis
-            )
+                max_tokens=1500,  # Sufficient tokens for detailed analysis
+                )
         )
         
         return agent

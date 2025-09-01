@@ -9,7 +9,7 @@ import { Progress } from '@/components/shared/ui/progress';
 import { Badge } from '@/components/shared/ui/badge';
 import { Alert, AlertDescription } from '@/components/shared/ui/alert';
 import { Upload, FileText, X, AlertCircle, CheckCircle2, FileSpreadsheet } from 'lucide-react';
-import { uploadFile } from '@/services/processing';
+import { uploadFile, completeJobAfterHSMatching } from '@/services/processing';
 import hsMatchingService from '@/services/hsMatching';
 import xmlGenerationService from '@/services/xmlGeneration';
 import { ProcessingJob, ProcessingStatus, ProductWithHSCode, ConfidenceLevel } from '@shared/types';
@@ -26,11 +26,12 @@ import {
   previewPerformanceTracker 
 } from '@/lib/preview-config';
 import { fileProcessingService } from '@/lib/file-processing-service';
+import { findColumnMapping, COLUMN_MAPPINGS } from './columnMapping';
 
 interface FileUploadProps {
   onUploadComplete?: (job: ProcessingJob) => void;
   onError?: (error: string) => void;
-  countrySchema?: string;
+  countrySchema?: 'TKM';
 }
 
 interface UploadedFile {
@@ -64,7 +65,7 @@ const ACCEPTED_TYPES = {
   'application/vnd.ms-excel': ['.xls']
 };
 
-export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }: FileUploadProps) {
+export function FileUpload({ onUploadComplete, onError, countrySchema = 'TKM' }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const queryClient = useQueryClient();
 
@@ -554,18 +555,56 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
     try {
       // Get uploaded file data to create batch matching request
       const file = uploadedFiles.find(f => f.job?.id === jobId);
-      if (!file?.previewData) {
+      if (!file?.previewData || file.previewData.length === 0) {
         onError?.('No data available for HS matching');
         return;
       }
 
+      // Find the correct column name for product description using column mapping
+      const sampleRow = file.previewData[0];
+      const availableHeaders = Object.keys(sampleRow);
+      
+      // Find product description column using the mapping system
+      let productDescriptionKey: string | null = null;
+      for (const header of availableHeaders) {
+        const mapping = findColumnMapping(header);
+        if (mapping?.canonical === 'product_name') {
+          productDescriptionKey = header;
+          break;
+        }
+      }
+      
+      if (!productDescriptionKey) {
+        onError?.('Could not find product description column in uploaded file');
+        return;
+      }
+
+      console.log(`Using column '${productDescriptionKey}' for product descriptions`);
+
       // Create batch request from preview data
-      const products = file.previewData.map((row: any) => ({
-        product_description: row['Product Description'] || '',
-        country: countrySchema,
-        include_alternatives: true,
-        confidence_threshold: 0.7
-      }));
+      const products = file.previewData.map((row: any) => {
+        const productDescription = row[productDescriptionKey] || '';
+        
+        // Validate product description before sending
+        if (!productDescription || productDescription.trim().length < 5) {
+          console.warn(`Empty or too short product description for row:`, row);
+          return null;
+        }
+        
+        return {
+          product_description: productDescription.trim(),
+          country: countrySchema,
+          include_alternatives: true,
+          confidence_threshold: 0.7
+        };
+      }).filter(product => product !== null); // Remove invalid products
+
+      if (products.length === 0) {
+        onError?.('No valid product descriptions found for HS matching');
+        return;
+      }
+
+      console.log(`Sending ${products.length} products for HS matching:`, products.slice(0, 3));
 
       const result = await hsMatchingService.matchBatchProducts({
         products,
@@ -586,6 +625,59 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
             : f
         )
       );
+
+      // Complete the job after HS matching
+      if (file.job?.id) {
+        try {
+          console.log('Completing job after HS matching:', file.job.id);
+          
+          // Convert HS matching results to the format expected by the API
+          const hsMatches = result.map((match: any) => ({
+            product_description: match.query,
+            matched_hs_code: match.primary_match?.hs_code || 'ERROR',
+            confidence_score: match.primary_match?.confidence || 0,
+            code_description: match.primary_match?.code_description || '',
+            chapter: match.primary_match?.chapter || '',
+            section: match.primary_match?.section || '',
+            processing_time_ms: match.processing_time_ms || 0,
+          }));
+
+          const completionResult = await completeJobAfterHSMatching(
+            file.job.id,
+            hsMatches,
+            [] // No processing errors for now
+          );
+
+          console.log('Job completion result:', completionResult);
+
+          if (completionResult.success) {
+            // Update the file with completion status
+            setUploadedFiles(prev => 
+              prev.map(f => 
+                f.job?.id === file.job?.id
+                  ? {
+                      ...f,
+                      job: {
+                        ...f.job!,
+                        status: completionResult.status as ProcessingStatus,
+                        total_products: completionResult.total_products,
+                        successful_matches: completionResult.successful_matches,
+                        average_confidence: completionResult.average_confidence || 0,
+                        processing_time_ms: completionResult.processing_time_ms,
+                      }
+                    }
+                  : f
+              )
+            );
+            
+            console.log('✅ Job completed successfully, now XML generation is available');
+          }
+        } catch (completionError) {
+          console.error('Error completing job after HS matching:', completionError);
+          // Don't throw error here - HS matching was successful, just job completion failed
+          // XML generation might still work if we manually set the status
+        }
+      }
       
     } catch (error) {
       console.error('Error starting HS matching:', error);
@@ -596,7 +688,7 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
   const initiateXMLGeneration = async (jobId: string) => {
     try {
       const result = await xmlGenerationService.generateXML(jobId, {
-        country_schema: countrySchema,
+        country_schema: countrySchema as 'TKM',
         include_metadata: true,
         validate_output: true
       });

@@ -62,7 +62,7 @@
 
 ## XML Generation Service
 
-**Responsibility:** Converts AI-processed data into country-specific ASYCUDA-compliant XML files
+**Responsibility:** Converts AI-processed data into country-specific declaration.xsd-compliant XML files
 
 **Key Interfaces:**
 - Country schema selection API

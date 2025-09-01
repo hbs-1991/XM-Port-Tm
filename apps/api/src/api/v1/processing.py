@@ -13,7 +13,7 @@ from src.core.database import get_db, sync_session_maker
 from src.core.config import get_settings
 from src.models.user import User
 from src.services.file_processing import FileProcessingService
-from src.schemas.processing import FileUploadResponse, FileUploadError, ProductData, JobProductsResponse, HSCodeUpdateRequest
+from src.schemas.processing import FileUploadResponse, FileUploadError, ProductData, JobProductsResponse, HSCodeUpdateRequest, JobCompletionRequest, JobCompletionResponse
 from src.middleware.rate_limit import limiter, UPLOAD_RATE_LIMITS
 
 settings = get_settings()
@@ -890,4 +890,106 @@ async def download_csv_template():
         raise HTTPException(
             status_code=500,
             detail=f"Error reading template file: {str(e)}"
+        )
+
+
+@router.post("/jobs/{job_id}/complete", response_model=JobCompletionResponse)
+@limiter.limit("30 per minute")  # Allow frequent job completion calls
+async def complete_job_after_hs_matching(
+    request: Request,
+    job_id: str,
+    completion_request: JobCompletionRequest,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Complete a processing job after HS code matching is finished.
+    
+    This endpoint should be called after HS matching to:
+    - Create ProductMatch records from HS matching results
+    - Update job status to COMPLETED or COMPLETED_WITH_ERRORS
+    - Calculate job statistics and processing metrics
+    
+    Args:
+        job_id: Processing job UUID
+        completion_request: HS matching results and any errors
+        current_user: Authenticated user
+        
+    Returns:
+        Job completion status and statistics
+        
+    Raises:
+        HTTPException: If job not found, access denied, or completion fails
+    """
+    try:
+        # Create a synchronous database session for file processing
+        with sync_session_maker() as db:
+            # Re-fetch the user in the current session to avoid session issues
+            from src.models.user import User as UserModel
+            user_in_session = db.query(UserModel).filter(UserModel.id == current_user.id).first()
+            if not user_in_session:
+                raise HTTPException(
+                    status_code=401,
+                    detail="User not found in current session"
+                )
+            
+            # Create file processing service
+            file_service = FileProcessingService(db)
+            
+            # Convert HS matches from schema to dict format
+            hs_matches_dict = []
+            for match in completion_request.hs_matches:
+                hs_matches_dict.append({
+                    'query': match.product_description,
+                    'primary_match': {
+                        'hs_code': match.matched_hs_code,
+                        'confidence': match.confidence_score,
+                        'code_description': match.code_description,
+                        'chapter': match.chapter,
+                        'section': match.section
+                    },
+                    'alternative_matches': [],  # Frontend doesn't send alternatives currently
+                    'processing_time_ms': match.processing_time_ms
+                })
+            
+            # Complete the job
+            result = await file_service.complete_job_after_hs_matching(
+                job_id=job_id,
+                user=user_in_session,
+                hs_matches=hs_matches_dict,
+                processing_errors=completion_request.processing_errors
+            )
+            
+            if result.get("success"):
+                return JobCompletionResponse(
+                    success=True,
+                    job_id=result["job_id"],
+                    status=result["status"],
+                    total_products=result["total_products"],
+                    successful_matches=result["successful_matches"],
+                    average_confidence=result["average_confidence"],
+                    processing_time_ms=result["processing_time_ms"],
+                    message=result["message"]
+                )
+            else:
+                # Job completion failed
+                raise HTTPException(
+                    status_code=500,
+                    detail={
+                        "error": "job_completion_failed",
+                        "message": result.get("error", "Failed to complete job"),
+                        "job_id": job_id
+                    }
+                )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log the error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Job completion error for job {job_id}: {str(e)}", exc_info=True)
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to complete job: {str(e)}"
         )

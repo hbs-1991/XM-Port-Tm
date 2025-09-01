@@ -2,6 +2,8 @@
  * Client-side file validation utilities for immediate feedback
  */
 
+import { COLUMN_MAPPINGS, findColumnMapping } from './columnMapping';
+
 interface ValidationError {
   field: string;
   error: string;
@@ -16,24 +18,18 @@ interface ClientValidationResult {
   canUpload: boolean;
 }
 
-const REQUIRED_COLUMNS = [
-  '№',
-  'Наименование товара',
-  'Страна происхождения',
-  'Количество мест',
-  'Часть мест',
-  'Вид упаковки',
-  'Количество',
-  'Единица измерение',
-  'Цена',
-  'Брутто кг',
-  'Нетто кг',
-  'Процедура',
-  'Преференция',
-  'BKU',
-  'Количество в допольнительной ед. изм.',
-  'Допольнительная ед. изм.'
-];
+// Dynamically generate required columns from the source of truth
+const REQUIRED_COLUMNS = COLUMN_MAPPINGS
+  .filter(mapping => mapping.required)
+  .map(mapping => mapping.russian);
+
+// Optional columns for reference
+const OPTIONAL_COLUMNS = COLUMN_MAPPINGS
+  .filter(mapping => !mapping.required)
+  .map(mapping => mapping.russian);
+
+// All columns for comprehensive checking
+const ALL_COLUMNS = COLUMN_MAPPINGS.map(mapping => mapping.russian);
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const SUPPORTED_TYPES = ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
@@ -131,31 +127,21 @@ export async function validateCSVHeaders(file: File): Promise<{
 
         const warnings = [];
         
-        // Check for common column name variations
-        const columnMapping: Record<string, string[]> = {
-          '№': ['номер', 'number', 'no', '#'],
-          'Наименование товара': ['товар', 'название', 'product', 'description', 'наименование', 'наименование товара'],
-          'Страна происхождения': ['страна', 'происхождения', 'country', 'origin', 'страна происхождения'],
-          'Количество мест': ['мест', 'места', 'packages', 'количество мест'],
-          'Часть мест': ['часть', 'part', 'части', 'часть мест'],
-          'Вид упаковки': ['упаковка', 'package', 'packaging', 'тара', 'вид упаковки'],
-          'Количество': ['кол-во', 'qty', 'quantity', 'amount', 'количество'],
-          'Единица измерение': ['ед.изм', 'единица', 'unit', 'measure', 'единицы', 'единица измерение'],
-          'Цена': ['стоимость', 'price', 'cost', 'value', 'цена'],
-          'Брутто кг': ['брутто', 'gross', 'вес брутто', 'брутто кг'],
-          'Нетто кг': ['нетто', 'net', 'вес нетто', 'нетто кг'],
-          'Процедура': ['procedure', 'процедуры', 'процедура'],
-          'Преференция': ['preference', 'преференции', 'преференция'],
-          'BKU': ['бку', 'bku'],
-          'Количество в допольнительной ед. изм.': ['доп.кол-во', 'additional quantity', 'количество в допольнительной ед. изм.'],
-          'Допольнительная ед. изм.': ['доп.ед.изм', 'additional unit', 'допольнительная ед. изм.']
-        };
-
-        for (const [required, variations] of Object.entries(columnMapping)) {
-          if (missingColumns.includes(required)) {
-            const foundVariation = headers.find(h => variations.some(v => h.includes(v)));
+        // Use the column mapping from the source of truth
+        for (const missingColumn of missingColumns) {
+          const mapping = COLUMN_MAPPINGS.find(m => m.russian === missingColumn);
+          if (mapping) {
+            // Check if any header matches the aliases or variations
+            const foundVariation = headers.find(h => {
+              const normalized = h.toLowerCase();
+              return mapping.aliases.some(alias => 
+                normalized.includes(alias.toLowerCase()) ||
+                alias.toLowerCase().includes(normalized)
+              ) || mapping.english.toLowerCase() === normalized;
+            });
+            
             if (foundVariation) {
-              warnings.push(`Column "${foundVariation}" might be "${required}". Please verify column names match requirements.`);
+              warnings.push(`Column "${foundVariation}" might be "${missingColumn}". Please verify column names match requirements.`);
             }
           }
         }

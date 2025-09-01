@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Items xmlns="urn:gtd:item">
+    {% for product in products %}
+    <Item>
+        <!-- Item identification -->
+        <ItemNumber>{{ loop.index }}</ItemNumber>
+        
+        <!-- HS Code (required) -->
+        <HSCode>{{ product.matched_hs_code }}</HSCode>
+        
+        <!-- Goods description (required) -->
+        <GoodsDescription>{{ product.product_description|e|truncate(255, True) }}</GoodsDescription>
+        
+        <!-- Country of origin (required) -->
+        <CountryOfOrigin>
+            {% set country_map = {
+                'China': 'CN',
+                'Turkey': 'TR', 
+                'USA': 'US',
+                'United States': 'US',
+                'Germany': 'DE',
+                'France': 'FR',
+                'Italy': 'IT',
+                'Japan': 'JP',
+                'South Korea': 'KR',
+                'United Kingdom': 'GB',
+                'Russia': 'RU'
+            } %}
+            {% set country_code = country_map.get(product.origin_country, product.origin_country[:2]|upper if product.origin_country and product.origin_country|length >= 2 else 'XX') %}
+            <Code>{{ country_code }}</Code>
+            {% if product.origin_country %}
+            <Name>{{ product.origin_country }}</Name>
+            {% endif %}
+        </CountryOfOrigin>
+        
+        <!-- Packaging information (optional) -->
+        <Packages>
+            <NumberOfPackages>1</NumberOfPackages>
+            <KindOfPackagesCode>CTN</KindOfPackagesCode>
+            <KindOfPackagesName>Carton</KindOfPackagesName>
+            <Marks>{{ product.product_description[:50]|e }}</Marks>
+        </Packages>
+        
+        <!-- Quantity and pricing (required) -->
+        <QuantityPrice>
+            <Quantity>{{ "%.3f"|format(product.quantity) }}</Quantity>
+            <UOMCode>{{ product.unit_of_measure[:3] if product.unit_of_measure else 'PCE' }}</UOMCode>
+            {% if product.unit_of_measure %}
+            <UOMName>{{ product.unit_of_measure }}</UOMName>
+            {% endif %}
+            {% if product.value and product.quantity and product.quantity > 0 %}
+            <UnitPrice>{{ "%.6f"|format(product.value / product.quantity) }}</UnitPrice>
+            {% endif %}
+        </QuantityPrice>
+        
+        <!-- Weight information (optional) -->
+        <Weights>
+            <NetKg>{{ "%.3f"|format(product.quantity) }}</NetKg>
+            <GrossKg>{{ "%.3f"|format(product.quantity * 1.1) }}</GrossKg>
+        </Weights>
+        
+        <!-- Preference codes (optional) -->
+        <Preference>
+            <PRFReg>00</PRFReg>
+            <PRFDut>00</PRFDut>
+            <PRFExc>00</PRFExc>
+        </Preference>
+        
+        <!-- Customs procedures (optional) -->
+        <Procedure>
+            <ExtendedCustomsProcedure>4000</ExtendedCustomsProcedure>
+            <NationalCustomsProcedure>000</NationalCustomsProcedure>
+        </Procedure>
+        
+        <!-- Supplementary units (optional) -->
+        {% if product.unit_of_measure and product.unit_of_measure != 'PCE' %}
+        <SupplementaryUnits>
+            <SupplementaryUnit>
+                <Quantity>{{ "%.6f"|format(product.quantity) }}</Quantity>
+                <Code>{{ product.unit_of_measure[:3] if product.unit_of_measure else 'PCE' }}</Code>
+                <Name>{{ product.unit_of_measure if product.unit_of_measure else 'Pieces' }}</Name>
+            </SupplementaryUnit>
+        </SupplementaryUnits>
+        {% endif %}
+        
+        <!-- Taxation information (optional) -->
+        <Taxation>
+            {% if product.value %}
+            <ItemTaxesAmount>{{ "%.2f"|format(product.value * 0.18) }}</ItemTaxesAmount>
+            <Lines>
+                <!-- Import Duty -->
+                <Line>
+                    <DutyTaxCode>A00</DutyTaxCode>
+                    <Base>{{ "%.2f"|format(product.value) }}</Base>
+                    <Rate>0.000000</Rate>
+                    <Amount>0.00</Amount>
+                    <ModeOfPayment>IMMEDIATE</ModeOfPayment>
+                    <CalcType>ADVAL</CalcType>
+                </Line>
+                <!-- VAT -->
+                <Line>
+                    <DutyTaxCode>B00</DutyTaxCode>
+                    <Base>{{ "%.2f"|format(product.value) }}</Base>
+                    <Rate>18.000000</Rate>
+                    <Amount>{{ "%.2f"|format(product.value * 0.18) }}</Amount>
+                    <ModeOfPayment>IMMEDIATE</ModeOfPayment>
+                    <CalcType>ADVAL</CalcType>
+                </Line>
+            </Lines>
+            {% endif %}
+        </Taxation>
+        
+        <!-- Valuation information (optional) -->
+        <Valuation>
+            {% if product.value %}
+            <TotalCIF>{{ "%.2f"|format(product.value * 1.15) }}</TotalCIF>
+            <StatisticalValue>{{ "%.2f"|format(product.value) }}</StatisticalValue>
+            <Invoice>
+                <AmountNational>{{ "%.2f"|format(product.value) }}</AmountNational>
+                <AmountForeign>{{ "%.2f"|format(product.value) }}</AmountForeign>
+                <CurrencyCode>USD</CurrencyCode>
+                <CurrencyRate>1.000000</CurrencyRate>
+            </Invoice>
+            {% endif %}
+        </Valuation>
+        
+    </Item>
+    {% endfor %}
+</Items>

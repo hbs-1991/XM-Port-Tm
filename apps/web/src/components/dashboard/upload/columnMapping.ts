@@ -20,9 +20,9 @@ export interface ColumnMapping {
 export const COLUMN_MAPPINGS: ColumnMapping[] = [
   {
     canonical: 'sequence_number',
-    russian: '№',
+    russian: 'номер',
     english: 'No',
-    aliases: ['номер', 'number', 'no', '#', 'п/п', 'пп'],
+    aliases: ['№', 'number', 'no', '#', 'п/п', 'пп'],
     required: true,
     type: 'number',
     validation: { min: 1 }
@@ -58,7 +58,7 @@ export const COLUMN_MAPPINGS: ColumnMapping[] = [
     russian: 'Часть мест',
     english: 'Package Part',
     aliases: ['часть', 'part', 'части', 'package part'],
-    required: true,
+    required: false,
     type: 'number',
     validation: { min: 1 }
   },
@@ -140,18 +140,18 @@ export const COLUMN_MAPPINGS: ColumnMapping[] = [
   },
   {
     canonical: 'additional_quantity',
-    russian: 'Количество в допольнительной ед. изм.',
+    russian: 'Количество в дополнительной ед. изм.',
     english: 'Additional Quantity',
-    aliases: ['доп.кол-во', 'additional quantity', 'доп количество', 'дополнительное количество'],
+    aliases: ['доп.кол-во', 'additional quantity', 'доп количество', 'дополнительное количество', 'допольнительное количество', 'количество в допольнительной ед. изм.'],
     required: false,
     type: 'number',
     validation: { min: 0 }
   },
   {
     canonical: 'additional_unit',
-    russian: 'Допольнительная ед. изм.',
+    russian: 'Дополнительная ед. изм.',
     english: 'Additional Unit',
-    aliases: ['доп.ед.изм', 'additional unit', 'доп единица', 'дополнительная единица'],
+    aliases: ['доп.ед.изм', 'additional unit', 'доп единица', 'дополнительная единица', 'допольнительная единица', 'допольнительная ед. изм.'],
     required: false,
     type: 'unit'
   }

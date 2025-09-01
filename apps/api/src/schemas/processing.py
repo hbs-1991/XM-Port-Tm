@@ -163,6 +163,40 @@ class HSCodeUpdateRequest(BaseModel):
         return v
 
 
+class HSMatchResult(BaseModel):
+    """Schema for HS code matching result"""
+    product_description: str = Field(..., description="Product description")
+    matched_hs_code: str = Field(..., description="Matched HS code")
+    confidence_score: float = Field(..., ge=0.0, le=1.0, description="Confidence score (0-1)")
+    code_description: str = Field(..., description="HS code description")
+    chapter: str = Field(..., description="HS code chapter")
+    section: str = Field(..., description="HS code section")
+    processing_time_ms: float = Field(..., description="Processing time in milliseconds")
+
+
+class JobCompletionRequest(BaseModel):
+    """Schema for job completion after HS matching"""
+    hs_matches: List[HSMatchResult] = Field(..., description="List of HS code matching results")
+    processing_errors: Optional[List[str]] = Field(default=[], description="List of processing errors")
+    
+    class Config:
+        json_encoders = {
+            float: lambda v: round(v, 3) if v is not None else None
+        }
+
+
+class JobCompletionResponse(BaseModel):
+    """Schema for job completion response"""
+    success: bool = Field(..., description="Whether the operation was successful")
+    job_id: str = Field(..., description="Job ID")
+    status: str = Field(..., description="New job status")
+    total_products: int = Field(..., description="Total number of products processed")
+    successful_matches: int = Field(..., description="Number of successful matches")
+    average_confidence: Optional[float] = Field(None, description="Average confidence score")
+    processing_time_ms: int = Field(..., description="Total processing time")
+    message: str = Field(..., description="Status message")
+
+
 class FileUploadError(BaseModel):
     """Schema for file upload errors"""
     error_code: str = Field(..., description="Error code")

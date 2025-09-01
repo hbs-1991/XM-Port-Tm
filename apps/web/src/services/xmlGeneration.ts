@@ -6,7 +6,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const USE_PROXY = true; // Enable proxy to avoid CORS issues with WSL
 
 interface XMLGenerationRequest {
-  country_schema?: string;
+  job_id: string;
+  country_schema?: 'TKM';
   include_metadata?: boolean;
   validate_output?: boolean;
 }
@@ -78,13 +79,20 @@ class XMLGenerationService {
 
   async generateXML(
     jobId: string, 
-    request?: XMLGenerationRequest
+    request?: Omit<XMLGenerationRequest, 'job_id'>
   ): Promise<XMLGenerationResponse> {
+    const payload: XMLGenerationRequest = {
+      job_id: jobId,
+      country_schema: request?.country_schema || 'TKM',
+      include_metadata: request?.include_metadata ?? true,
+      validate_output: request?.validate_output ?? true
+    };
+
     const response = await this.fetchWithAuth(
-      `/api/v1/xml-generation/processing/${jobId}/generate-xml`,
+      `/api/v1/processing/${jobId}/generate-xml`,
       {
         method: 'POST',
-        body: request ? JSON.stringify(request) : undefined,
+        body: JSON.stringify(payload),
       }
     );
 
@@ -93,7 +101,7 @@ class XMLGenerationService {
 
   async getXMLDownloadInfo(jobId: string): Promise<XMLDownloadResponse> {
     const response = await this.fetchWithAuth(
-      `/api/v1/xml-generation/processing/${jobId}/xml-download`,
+      `/api/v1/processing/${jobId}/xml-download`,
       {
         method: 'GET',
       }
@@ -104,7 +112,7 @@ class XMLGenerationService {
 
   async getXMLStatus(jobId: string): Promise<XMLStatusResponse> {
     const response = await this.fetchWithAuth(
-      `/api/v1/xml-generation/processing/${jobId}/xml-status`,
+      `/api/v1/processing/${jobId}/xml-status`,
       {
         method: 'GET',
       }

@@ -219,39 +219,6 @@ class ProcessingService {
     return response.blob();
   }
 
-  async validateFile(file: File): Promise<{
-    valid: boolean;
-    errors: Array<{
-      field: string;
-      error: string;
-      row?: number;
-      column?: string;
-    }>;
-    warnings: string[];
-    total_rows: number;
-    valid_rows: number;
-    summary?: {
-      total_errors: number;
-      total_warnings: number;
-      errors_by_field: Record<string, number>;
-      errors_by_type: Record<string, number>;
-      most_common_errors: string[];
-      data_quality_score: number;
-    };
-    previewData?: any[];
-  }> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await this.fetchWithAuth('/api/v1/processing/validate', {
-      method: 'POST',
-      body: formData,
-    });
-
-    const data = await response.json();
-    return data;
-  }
-
   async getJobProducts(jobId: string): Promise<{
     job_id: string;
     status: string;
@@ -307,6 +274,171 @@ class ProcessingService {
 
     return await response.json();
   }
+
+  async processFileWithHSMatching({ 
+    file, 
+    fileId, 
+    countrySchema, 
+    onProgress 
+  }: UploadFileParams): Promise<{
+    success: boolean;
+    job_id: string;
+    products_processed: number;
+    processing_errors: string[];
+    credits_used: number;
+    processing_time_ms: number;
+    hs_matching_summary: any;
+    validation_summary: {
+      total_rows: number;
+      valid_rows: number;
+      warnings: string[];
+    };
+  }> {
+    return this.processFileWithHSMatchingWithRetry({ file, fileId, countrySchema, onProgress }, 3);
+  }
+
+  private async processFileWithHSMatchingWithRetry(
+    params: UploadFileParams, 
+    maxRetries: number,
+    currentAttempt: number = 1
+  ): Promise<any> {
+    // Get auth token first
+    const { getSession } = await import('next-auth/react');
+    const session = await getSession();
+    
+    return new Promise((resolve, reject) => {
+      const { file, fileId, countrySchema, onProgress } = params;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('country_schema', countrySchema);
+
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const progress = (event.loaded / event.total) * 50; // First 50% is upload
+          onProgress?.(progress);
+        }
+      });
+
+      xhr.addEventListener('load', async () => {
+        try {
+          if (xhr.status === 200 || xhr.status === 201) {
+            const response = JSON.parse(xhr.responseText);
+            onProgress?.(100); // Complete
+            resolve(response);
+          } else if (xhr.status === 409 && currentAttempt < maxRetries) {
+            // Handle 409 Conflict with exponential backoff retry
+            const errorResponse = JSON.parse(xhr.responseText);
+            const isRetryable = errorResponse.detail?.error === 'credit_reservation_conflict' || 
+                              errorResponse.detail?.retry_suggested;
+            
+            if (isRetryable) {
+              const delay = Math.min(1000 * Math.pow(2, currentAttempt - 1), 5000); // Max 5s delay
+              console.log(`Processing conflict detected, retrying in ${delay}ms (attempt ${currentAttempt + 1}/${maxRetries})`);
+              
+              setTimeout(() => {
+                this.processFileWithHSMatchingWithRetry(params, maxRetries, currentAttempt + 1)
+                  .then(resolve)
+                  .catch(reject);
+              }, delay);
+              return;
+            }
+            
+            // Not retryable 409 error
+            const errorMessage = errorResponse.detail?.message || errorResponse.message || `Processing failed with status ${xhr.status}`;
+            reject(new Error(errorMessage));
+          } else {
+            // Parse error response for better error messages
+            try {
+              const errorResponse = JSON.parse(xhr.responseText);
+              const errorMessage = errorResponse.detail?.message || 
+                                 errorResponse.message || 
+                                 `Processing failed with status ${xhr.status}`;
+              reject(new Error(errorMessage));
+            } catch {
+              reject(new Error(`Processing failed with status ${xhr.status}`));
+            }
+          }
+        } catch (error) {
+          reject(new Error('Failed to parse server response'));
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Network error during processing'));
+      });
+
+      xhr.addEventListener('abort', () => {
+        reject(new Error('Processing was cancelled'));
+      });
+
+      xhr.addEventListener('timeout', () => {
+        reject(new Error('Processing timed out'));
+      });
+
+      xhr.timeout = 300000; // 5 minutes timeout
+      const baseUrl = USE_PROXY ? '/api/proxy' : API_BASE_URL;
+      xhr.open('POST', `${baseUrl}/api/v1/processing/process-with-hs-matching`);
+      
+      // Add auth header if available
+      if (session?.accessToken) {
+        xhr.setRequestHeader('Authorization', `Bearer ${session.accessToken}`);
+      }
+      
+      xhr.send(formData);
+    });
+  }
+
+  async completeJobAfterHSMatching(
+    jobId: string,
+    hsMatches: Array<{
+      product_description: string;
+      matched_hs_code: string;
+      confidence_score: number;
+      code_description: string;
+      chapter: string;
+      section: string;
+      processing_time_ms: number;
+    }>,
+    processingErrors: string[] = []
+  ): Promise<{
+    success: boolean;
+    job_id: string;
+    status: string;
+    total_products: number;
+    successful_matches: number;
+    average_confidence?: number;
+    processing_time_ms: number;
+    message: string;
+  }> {
+    const response = await this.fetchWithAuth(`/api/v1/processing/jobs/${jobId}/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        hs_matches: hsMatches.map(match => ({
+          product_description: match.product_description,
+          matched_hs_code: match.matched_hs_code,
+          confidence_score: match.confidence_score,
+          code_description: match.code_description,
+          chapter: match.chapter,
+          section: match.section,
+          processing_time_ms: match.processing_time_ms,
+        })),
+        processing_errors: processingErrors,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail?.message || errorData.message || `Failed to complete job: ${response.status}`);
+    }
+
+    return await response.json();
+  }
 }
 
 // Create singleton instance
@@ -314,6 +446,7 @@ const processingService = new ProcessingService();
 
 // Export individual functions for easier use with React Query
 export const uploadFile = processingService.uploadFile.bind(processingService);
+export const processFileWithHSMatching = processingService.processFileWithHSMatching.bind(processingService);
 export const getProcessingJob = processingService.getProcessingJob.bind(processingService);
 export const getUserJobs = processingService.getUserJobs.bind(processingService);
 export const cancelProcessingJob = processingService.cancelProcessingJob.bind(processingService);
@@ -322,5 +455,6 @@ export const downloadResults = processingService.downloadResults.bind(processing
 export const validateFile = processingService.validateFile.bind(processingService);
 export const getJobProducts = processingService.getJobProducts.bind(processingService);
 export const updateHSCode = processingService.updateHSCode.bind(processingService);
+export const completeJobAfterHSMatching = processingService.completeJobAfterHSMatching.bind(processingService);
 
 export default processingService;

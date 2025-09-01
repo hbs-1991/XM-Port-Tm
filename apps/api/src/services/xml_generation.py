@@ -110,10 +110,10 @@ class XMLGenerationService:
         self._country_configs = {
             CountrySchema.TURKMENISTAN: XMLGenerationConfig(
                 country_schema=CountrySchema.TURKMENISTAN,
-                template_name="asycuda_turkmenistan.xml.j2",
+                template_name="declaration_turkmenistan.xml.j2",
                 encoding="utf-8",
                 validate_output=True,
-                include_metadata=True
+                include_metadata=False
             )
         }
         
@@ -357,7 +357,7 @@ class XMLGenerationService:
             # Check for required elements based on country schema
             if country_schema == CountrySchema.TURKMENISTAN:
                 validation_errors.extend(
-                    self._validate_asycuda_structure(xml_content)
+                    self._validate_declaration_structure(xml_content)
                 )
             
             # Additional validations can be added here
@@ -369,9 +369,9 @@ class XMLGenerationService:
             logger.error(f"XML validation error: {str(e)}", exc_info=True)
             return [f"Validation error: {str(e)}"]
     
-    def _validate_asycuda_structure(self, xml_content: str) -> List[str]:
+    def _validate_declaration_structure(self, xml_content: str) -> List[str]:
         """
-        Validate ASYCUDA-specific XML structure for Turkmenistan
+        Validate declaration.xsd compliant XML structure
         
         Args:
             xml_content: XML content to validate
@@ -381,95 +381,45 @@ class XMLGenerationService:
         """
         errors = []
         
-        # Required ASYCUDA 4.1 root elements
-        required_root_elements = [
-            'ASYCUDA_Declaration',
-            'Document_Header',
-            'Declaration_Items',
-            'Summary'
-        ]
+        # Check for correct namespace
+        if 'xmlns="urn:gtd:item"' not in xml_content:
+            errors.append("Missing or incorrect namespace: expected 'urn:gtd:item'")
         
-        for element in required_root_elements:
-            if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
-                errors.append(f"Missing required ASYCUDA root element: {element}")
+        # Check for root element
+        if '<Items' not in xml_content:
+            errors.append("Missing root element: <Items>")
         
-        # Required header elements
-        required_header_elements = [
-            'Document_number',
-            'Registration_Date',
-            'Declaration_Type_Code',
-            'Customs_Office_Code',
-            'Currency_Code',
-            'Total_Number_of_Items'
-        ]
-        
-        for element in required_header_elements:
-            if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
-                errors.append(f"Missing required header element: {element}")
-        
-        # Required item elements (check for at least one item)
+        # Required elements for each item
         required_item_elements = [
-            'Item_Number',
-            'Commodity_Code',
-            'Commodity_Description',
-            'Country_of_Origin_Code'
+            'HSCode',
+            'GoodsDescription', 
+            'CountryOfOrigin',
+            'QuantityPrice'
         ]
         
         for element in required_item_elements:
             if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
-                errors.append(f"Missing required item element: {element}")
+                errors.append(f"Missing required element: {element}")
         
-        # Validate ASYCUDA namespace
-        if 'xmlns="http://asycuda.org/asycuda"' not in xml_content:
-            errors.append("Missing ASYCUDA namespace declaration")
+        # Check nested required elements
+        if '<CountryOfOrigin>' in xml_content or '<CountryOfOrigin ' in xml_content:
+            if '<Code>' not in xml_content:
+                errors.append("Missing required element: CountryOfOrigin/Code")
         
-        # Validate version
-        if 'version="4.1"' not in xml_content:
-            errors.append("Missing or incorrect ASYCUDA version (should be 4.1)")
+        if '<QuantityPrice>' in xml_content or '<QuantityPrice ' in xml_content:
+            required_quantity_elements = ['Quantity', 'UOMCode']
+            for element in required_quantity_elements:
+                if f'<{element}>' not in xml_content and f'<{element} ' not in xml_content:
+                    errors.append(f"Missing required element: QuantityPrice/{element}")
         
-        # Validate Turkmenistan-specific elements
-        turkmenistan_elements = [
-            'Country_of_Destination>TKM',
-            'Customs_Office_Code>TKM001',
-            'Declaration_Type_Code>IM4'
-        ]
-        
-        for element in turkmenistan_elements:
-            if f'<{element}<' not in xml_content.replace('>', '<'):
-                errors.append(f"Missing Turkmenistan-specific element: {element}")
-        
-        # Validate tax structure
-        required_tax_elements = [
-            'Duty_Tax',
-            'Tax_line',
-            'Tax_type_Code',
-            'Tax_rate',
-            'Tax_amount'
-        ]
-        
-        for element in required_tax_elements:
-            if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
-                errors.append(f"Missing required tax element: {element}")
-        
-        # Validate signature elements
-        required_signature_elements = [
-            'Declaration_Signature',
-            'Signature_Method',
-            'Signature_Value'
-        ]
-        
-        for element in required_signature_elements:
-            if f'<{element}' not in xml_content and f'<{element}>' not in xml_content:
-                errors.append(f"Missing required signature element: {element}")
-        
-        # Additional business rule validations
-        self._validate_asycuda_business_rules(xml_content, errors)
+        # Validate structure and business rules
+        self._validate_declaration_business_rules(xml_content, errors)
         
         return errors
     
-    def _validate_asycuda_business_rules(self, xml_content: str, errors: List[str]) -> None:
+    def _validate_declaration_business_rules(self, xml_content: str, errors: List[str]) -> None:
         """
-        Validate ASYCUDA business rules
+        Validate declaration business rules
         
         Args:
             xml_content: XML content to validate
@@ -479,65 +429,72 @@ class XMLGenerationService:
             from xml.etree import ElementTree as ET
             root = ET.fromstring(xml_content.encode('utf-8'))
             
-            # Validate that total items count matches actual items
-            total_items_elem = root.find('.//Total_Number_of_Items')
-            items = root.findall('.//Item')
+            # Define namespace for XPath queries
+            namespace = {'ns': 'urn:gtd:item'}
             
-            if total_items_elem is not None and items:
-                declared_count = int(total_items_elem.text)
-                actual_count = len(items)
-                if declared_count != actual_count:
-                    errors.append(f"Item count mismatch: declared {declared_count}, actual {actual_count}")
+            # Find all items
+            items = root.findall('.//ns:Item', namespace)
+            if not items:
+                errors.append("No items found in declaration")
+                return
             
-            # Validate HS codes format (should be 6-10 digits)
-            commodity_codes = root.findall('.//Commodity_Code')
-            for code_elem in commodity_codes:
-                if code_elem.text:
-                    code = code_elem.text.strip()
-                    if not code.isdigit() or len(code) < 6 or len(code) > 10:
-                        errors.append(f"Invalid HS code format: {code}")
-            
-            # Validate currency codes (should be 3-letter ISO codes)
-            currency_codes = root.findall('.//Currency_Code')
-            for currency_elem in currency_codes:
-                if currency_elem.text:
-                    currency = currency_elem.text.strip()
-                    if len(currency) != 3 or not currency.isupper():
-                        errors.append(f"Invalid currency code format: {currency}")
-            
-            # Validate country codes (should be 3-letter ISO codes)
-            country_codes = root.findall('.//Country_of_Origin_Code')
-            for country_elem in country_codes:
-                if country_elem.text:
-                    country = country_elem.text.strip()
-                    if len(country) != 3 or not country.isupper():
-                        errors.append(f"Invalid country code format: {country}")
-            
-            # Validate numeric fields are positive
-            numeric_fields = [
-                './/Total_Invoice_Amount',
-                './/Item_Invoice_Amount',
-                './/Statistical_value',
-                './/Net_weight',
-                './/Gross_weight'
-            ]
-            
-            for field_xpath in numeric_fields:
-                elements = root.findall(field_xpath)
-                for elem in elements:
-                    if elem.text:
+            # Validate each item
+            for i, item in enumerate(items, 1):
+                item_prefix = f"Item {i}: "
+                
+                # Validate HS code format (6 or 8 digits)
+                hs_code_elem = item.find('.//ns:HSCode', namespace)
+                if hs_code_elem is not None and hs_code_elem.text:
+                    hs_code = hs_code_elem.text.strip()
+                    if not hs_code.isdigit():
+                        errors.append(f"{item_prefix}HSCode must contain only digits: {hs_code}")
+                    elif len(hs_code) not in [6, 8]:
+                        errors.append(f"{item_prefix}HSCode must be 6 or 8 digits: {hs_code}")
+                
+                # Validate country code (2-letter format)
+                country_code_elem = item.find('.//ns:Code', namespace)
+                if country_code_elem is not None and country_code_elem.text:
+                    country_code = country_code_elem.text.strip()
+                    if len(country_code) != 2 or not country_code.isupper() or not country_code.isalpha():
+                        errors.append(f"{item_prefix}Country code must be 2 uppercase letters: {country_code}")
+                
+                # Validate quantity is positive
+                quantity_elem = item.find('.//ns:Quantity', namespace)
+                if quantity_elem is not None and quantity_elem.text:
+                    try:
+                        quantity = float(quantity_elem.text)
+                        if quantity <= 0:
+                            errors.append(f"{item_prefix}Quantity must be positive: {quantity}")
+                    except ValueError:
+                        errors.append(f"{item_prefix}Quantity must be a valid number: {quantity_elem.text}")
+                
+                # Validate unit price if present
+                unit_price_elem = item.find('.//ns:UnitPrice', namespace)
+                if unit_price_elem is not None and unit_price_elem.text:
+                    try:
+                        unit_price = float(unit_price_elem.text)
+                        if unit_price < 0:
+                            errors.append(f"{item_prefix}UnitPrice cannot be negative: {unit_price}")
+                    except ValueError:
+                        errors.append(f"{item_prefix}UnitPrice must be a valid number: {unit_price_elem.text}")
+                
+                # Validate weights if present
+                for weight_field in ['NetKg', 'GrossKg']:
+                    weight_elem = item.find(f'.//ns:{weight_field}', namespace)
+                    if weight_elem is not None and weight_elem.text:
                         try:
-                            value = float(elem.text)
-                            if value < 0:
-                                errors.append(f"Negative value not allowed in {field_xpath}: {value}")
+                            weight = float(weight_elem.text)
+                            if weight < 0:
+                                errors.append(f"{item_prefix}{weight_field} cannot be negative: {weight}")
                         except ValueError:
-                            errors.append(f"Invalid numeric value in {field_xpath}: {elem.text}")
+                            errors.append(f"{item_prefix}{weight_field} must be a valid number: {weight_elem.text}")
                             
         except ET.ParseError:
             # XML parsing errors are handled in parent method
             pass
         except Exception as e:
-            errors.append(f"Business rule validation error: {str(e)}")
+            errors.append(f"Declaration business rule validation error: {str(e)}")
+
     
     def get_supported_countries(self) -> List[CountrySchema]:
         """Get list of supported country schemas"""

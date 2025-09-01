@@ -60,7 +60,7 @@ sequenceDiagram
         AI-->>FileProc: All products processed
         FileProc->>WS: Send progress (80%)
         
-        FileProc->>XML: Generate ASYCUDA XML
+        FileProc->>XML: Generate declaration.xsd XML
         XML->>DB: Get country schema (Turkmenistan)
         XML->>XML: Apply xsdata validation
         XML->>S3: Upload generated XML
