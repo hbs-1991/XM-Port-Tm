@@ -18,9 +18,9 @@ from xsdata.formats.dataclass.parsers import XmlParser
 from xsdata.formats.dataclass.serializers import XmlSerializer
 from xsdata.formats.dataclass.serializers.config import SerializerConfig
 
-from ..models.processing_job import ProcessingJob, ProcessingStatus
-from ..models.product_match import ProductMatch
-from ..core.config import get_settings
+from src.models.processing_job import ProcessingJob, ProcessingStatus
+from src.models.product_match import ProductMatch
+from src.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class XMLGenerationService:
         """Get XML storage service instance (lazy initialization)"""
         global _xml_storage_service
         if _xml_storage_service is None:
-            from .xml_storage import xml_storage_service
+            from src.services.xml_storage import xml_storage_service
             _xml_storage_service = xml_storage_service
         return _xml_storage_service
     

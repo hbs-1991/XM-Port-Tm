@@ -3,7 +3,7 @@ Base database model and common utilities
 """
 from sqlalchemy import Column, Integer, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
-from ..core.config import settings
+from src.core.config import settings
 
 # NOTE: We use async engine from database.py, not a sync engine here
 # This prevents dual-engine conflicts and confusing logs

@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy import DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
-from .base import Base
+from src.models.base import Base
 import uuid
 
 

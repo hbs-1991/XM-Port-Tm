@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from .base import Base
+from src.models.base import Base
 import enum
 import uuid
 

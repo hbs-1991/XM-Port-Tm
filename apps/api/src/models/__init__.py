@@ -1,12 +1,12 @@
 """
 Database models package
 """
-from .base import Base, TimestampMixin
-from .user import User, UserRole, SubscriptionTier
-from .processing_job import ProcessingJob, ProcessingStatus
-from .hs_code import HSCode
-from .product_match import ProductMatch
-from .billing_transaction import BillingTransaction, BillingTransactionType, BillingTransactionStatus
+from src.models.base import Base, TimestampMixin
+from src.models.user import User, UserRole, SubscriptionTier
+from src.models.processing_job import ProcessingJob, ProcessingStatus
+from src.models.hs_code import HSCode
+from src.models.product_match import ProductMatch
+from src.models.billing_transaction import BillingTransaction, BillingTransactionType, BillingTransactionStatus
 
 __all__ = [
     "Base",
