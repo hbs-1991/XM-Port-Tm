@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from src.api.v1 import auth, processing, admin, users, xml_generation, hs_matching, ws
+from src.api.v1 import file_operations, job_management, job_data, processing_workflow
 from src.core.config import settings
 from src.middleware.security_headers import SecurityHeadersMiddleware
 
@@ -56,6 +57,12 @@ app.include_router(xml_generation.router, prefix="/api/v1", tags=["xml-generatio
 app.include_router(hs_matching.router, prefix="/api/v1/hs-codes", tags=["hs-matching"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(ws.router, prefix="/api/v1/ws", tags=["websocket"])
+
+# New modular processing routes (alongside existing processing.router for backward compatibility)
+app.include_router(file_operations.router, prefix="/api/v1/processing", tags=["file-operations"])
+app.include_router(job_management.router, prefix="/api/v1/processing", tags=["job-management"])
+app.include_router(job_data.router, prefix="/api/v1/processing", tags=["job-data"])
+app.include_router(processing_workflow.router, prefix="/api/v1/processing", tags=["processing-workflow"])
 
 
 @app.get("/")

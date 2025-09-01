@@ -163,16 +163,27 @@ export const COLUMN_MAPPINGS: ColumnMapping[] = [
 export function findColumnMapping(headerName: string): ColumnMapping | null {
   const normalized = headerName.trim().toLowerCase();
   
-  return COLUMN_MAPPINGS.find(mapping => {
-    // Check exact matches first
+  // First pass: Look for exact matches only
+  let exactMatch = COLUMN_MAPPINGS.find(mapping => {
+    // Check exact russian/english matches
     if (mapping.russian.toLowerCase() === normalized ||
         mapping.english.toLowerCase() === normalized) {
       return true;
     }
     
-    // Check aliases
+    // Check exact alias matches only (no partial matching)
     return mapping.aliases.some(alias => 
-      alias.toLowerCase() === normalized ||
+      alias.toLowerCase() === normalized
+    );
+  });
+  
+  if (exactMatch) {
+    return exactMatch;
+  }
+  
+  // Second pass: Look for partial matches only if no exact match found
+  return COLUMN_MAPPINGS.find(mapping => {
+    return mapping.aliases.some(alias => 
       normalized.includes(alias.toLowerCase()) ||
       alias.toLowerCase().includes(normalized)
     );

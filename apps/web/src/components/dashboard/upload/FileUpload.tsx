@@ -632,20 +632,118 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'TKM' }:
           console.log('Completing job after HS matching:', file.job.id);
           
           // Convert HS matching results to the format expected by the API
-          const hsMatches = result.map((match: any) => ({
-            product_description: match.query,
-            matched_hs_code: match.primary_match?.hs_code || 'ERROR',
-            confidence_score: match.primary_match?.confidence || 0,
-            code_description: match.primary_match?.code_description || '',
-            chapter: match.primary_match?.chapter || '',
-            section: match.primary_match?.section || '',
-            processing_time_ms: match.processing_time_ms || 0,
-          }));
+          // Need to match HS results with original product data from previewData
+          const hsMatches = result.map((match: any, index: number) => {
+            const originalRow = file.previewData[index] || {};
+            
+            // Find required fields from original data using column mapping
+            let quantity = 0;
+            let unit = '';
+            let unitPrice = 0;
+            let origin_country = '';
+            
+            console.log(`Processing row ${index}:`, originalRow);
+            console.log(`Available headers:`, Object.keys(originalRow));
+            
+            // Map columns using column mapping logic with priority handling
+            Object.keys(originalRow).forEach(header => {
+              const mapping = findColumnMapping(header);
+              console.log(`Header "${header}" (value: "${originalRow[header]}") -> mapping:`, mapping?.canonical);
+              if (mapping) {
+                switch (mapping.canonical) {
+                  case 'quantity':
+                    const currentValue = parseFloat(originalRow[header]) || 0;
+                    // Prioritize main "Количество" over additional quantity, and non-zero values
+                    if (header === 'Количество' || (quantity === 0 && currentValue > 0)) {
+                      quantity = currentValue;
+                      console.log(`✅ Set quantity from "${header}": ${quantity}`);
+                    } else {
+                      console.log(`⚠️ Skipped quantity from "${header}" (value: ${currentValue}) - already have: ${quantity}`);
+                    }
+                    break;
+                  case 'unit':
+                    // Prioritize main unit field "Единица измерение", avoid numeric procedure values
+                    if (header === 'Единица измерение' || (unit === '' && header !== 'Процедура' && isNaN(Number(originalRow[header])))) {
+                      unit = originalRow[header] || '';
+                      console.log(`✅ Set unit from "${header}": ${unit}`);
+                    } else {
+                      console.log(`⚠️ Skipped unit from "${header}" (value: "${originalRow[header]}") - already have: "${unit}" or is numeric`);
+                    }
+                    break;
+                  case 'unit_price':
+                    unitPrice = parseFloat(originalRow[header]) || 0;
+                    console.log(`✅ Set unit_price: ${unitPrice}`);
+                    break;
+                  case 'origin_country':
+                    origin_country = originalRow[header] || '';
+                    console.log(`✅ Set origin_country: ${origin_country}`);
+                    break;
+                }
+              }
+            });
+            
+            // Calculate total value for XML generation
+            const totalValue = quantity * unitPrice;
+            console.log(`Final values - quantity: ${quantity}, unitPrice: ${unitPrice}, totalValue: ${totalValue}, unit: ${unit}, origin_country: ${origin_country}`);
+            
+            // Validate required fields before creating result object
+            if (!quantity || quantity <= 0) {
+              console.error(`❌ Invalid quantity for row ${index}: ${quantity}`);
+            }
+            if (!unit) {
+              console.error(`❌ Missing unit for row ${index}`);
+            }
+            if (!origin_country) {
+              console.error(`❌ Missing origin_country for row ${index}`);
+            }
+            if (!totalValue || totalValue <= 0) {
+              console.error(`❌ Invalid total value for row ${index}: ${totalValue}`);
+            }
+            
+            const resultObject = {
+              product_description: match.query,
+              matched_hs_code: match.primary_match?.hs_code || 'ERROR',
+              confidence_score: match.primary_match?.confidence || 0,
+              code_description: match.primary_match?.code_description || '',
+              chapter: match.primary_match?.chapter || '',
+              section: match.primary_match?.section || '',
+              processing_time_ms: match.processing_time_ms || 0,
+              // Include required ProductMatch fields from original data
+              quantity,
+              unit_of_measure: unit,
+              value: totalValue,
+              origin_country,
+            };
+            
+            console.log(`📦 Created result object for row ${index}:`, resultObject);
+            return resultObject;
+          });
+
+          // Check if job is already completed to avoid duplicate completion calls
+          if (file.job?.status === 'COMPLETED' || file.job?.status === 'COMPLETED_WITH_ERRORS' || file.job?.status === 'FAILED') {
+            console.log(`Job ${file.job.id} is already in final status: ${file.job.status}, skipping completion call`);
+            console.log('✅ Job was already completed, XML generation is available');
+            return; // Early return to prevent duplicate completion
+          }
+
+          // Debug: Show what we're sending to the backend
+          console.log(`🚀 Sending job completion for ${file.job.id} with ${hsMatches.length} matches:`, hsMatches);
+          
+          // Validate data before sending
+          const validMatches = hsMatches.filter(match => {
+            const isValid = match.quantity > 0 && match.value > 0 && match.unit_of_measure && match.origin_country;
+            if (!isValid) {
+              console.error(`❌ Invalid match data:`, match);
+            }
+            return isValid;
+          });
+          
+          console.log(`✅ Sending ${validMatches.length} valid matches out of ${hsMatches.length} total`);
 
           const completionResult = await completeJobAfterHSMatching(
             file.job.id,
-            hsMatches,
-            [] // No processing errors for now
+            validMatches,
+            hsMatches.length > validMatches.length ? [`Filtered out ${hsMatches.length - validMatches.length} invalid matches`] : []
           );
 
           console.log('Job completion result:', completionResult);

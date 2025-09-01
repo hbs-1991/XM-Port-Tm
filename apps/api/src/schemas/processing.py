@@ -172,6 +172,11 @@ class HSMatchResult(BaseModel):
     chapter: str = Field(..., description="HS code chapter")
     section: str = Field(..., description="HS code section")
     processing_time_ms: float = Field(..., description="Processing time in milliseconds")
+    # Required ProductMatch fields
+    quantity: float = Field(..., gt=0, description="Product quantity")
+    unit_of_measure: str = Field(..., description="Unit of measure")
+    value: float = Field(..., gt=0, description="Product value (quantity × unit_price)")
+    origin_country: str = Field(..., description="Origin country")
 
 
 class JobCompletionRequest(BaseModel):
@@ -202,3 +207,27 @@ class FileUploadError(BaseModel):
     error_code: str = Field(..., description="Error code")
     message: str = Field(..., description="Human-readable error message")
     details: Optional[dict] = Field(None, description="Additional error details")
+
+
+class ProcessWithHSMatchingRequest(BaseModel):
+    """Schema for processing file with immediate HS matching request"""
+    job_id: str = Field(..., description="Processing job ID")
+    country_schema: str = Field(default="USA", description="Country schema (3-letter code)")
+    enable_caching: bool = Field(default=True, description="Enable HS code caching")
+    confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Confidence threshold for HS matching")
+    
+    @validator('country_schema')
+    def validate_country_schema(cls, v):
+        if not v.isupper():
+            raise ValueError('Country schema must be uppercase')
+        return v
+
+
+class ProcessWithHSMatchingResponse(BaseModel):
+    """Schema for processing file with HS matching response"""
+    success: bool = Field(..., description="Whether the operation was successful")
+    job_id: str = Field(..., description="Processing job ID")
+    status: str = Field(..., description="Job processing status")
+    products_with_hs_codes: List[ProductDataWithHS] = Field(..., description="Products with HS code matches")
+    processing_stats: dict = Field(..., description="Processing statistics")
+    message: str = Field(..., description="Status message")

@@ -427,6 +427,11 @@ class ProcessingService {
           chapter: match.chapter,
           section: match.section,
           processing_time_ms: match.processing_time_ms,
+          // Include required ProductMatch fields
+          quantity: match.quantity,
+          unit_of_measure: match.unit_of_measure,
+          value: match.value,
+          origin_country: match.origin_country,
         })),
         processing_errors: processingErrors,
       }),

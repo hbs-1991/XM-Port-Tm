@@ -169,7 +169,7 @@
 
   <xs:simpleType name="HSCodeType">
     <xs:restriction base="xs:string">
-      <xs:pattern value="\d{6}|\d{8}"/>
+      <xs:pattern value="\d{6}|\d{9}"/>
     </xs:restriction>
   </xs:simpleType>
 

@@ -229,8 +229,25 @@ class JobManagementService:
             if not processing_job:
                 raise ValueError(f"Processing job {job_id} not found or access denied")
             
+            # Check if job is already in a final state
             if processing_job.status not in [ProcessingStatus.PENDING, ProcessingStatus.PROCESSING]:
-                raise ValueError(f"Job must be in PENDING or PROCESSING status. Current status: {processing_job.status.value}")
+                # If job is already completed, return the existing result instead of failing
+                if processing_job.status in [ProcessingStatus.COMPLETED, ProcessingStatus.COMPLETED_WITH_ERRORS]:
+                    logger.info(f"Job {job_id} is already completed with status {processing_job.status.value}, returning existing result")
+                    return {
+                        "success": True,
+                        "job_id": job_id,
+                        "status": processing_job.status.value,
+                        "total_products": processing_job.total_products,
+                        "successful_matches": processing_job.successful_matches,
+                        "average_confidence": float(processing_job.average_confidence) if processing_job.average_confidence else None,
+                        "processing_time_ms": processing_job.processing_time_ms,
+                        "message": f"Job was already completed with status {processing_job.status.value}",
+                        "errors": []
+                    }
+                else:
+                    # For FAILED status or other invalid states, still raise error
+                    raise ValueError(f"Job must be in PENDING or PROCESSING status. Current status: {processing_job.status.value}")
             
             logger.info(f"Completing job {job_id} after HS matching with {len(hs_matches)} matches")
             
@@ -245,11 +262,50 @@ class JobManagementService:
             
             for match_data in hs_matches:
                 try:
-                    # Extract data from HS match result
-                    product_description = match_data.get('query', '')
-                    primary_match = match_data.get('primary_match', {})
+                    logger.info(f"Processing match data: {match_data}")
                     
-                    if not primary_match:
+                    # Handle both old and new format for backward compatibility
+                    if 'query' in match_data and 'primary_match' in match_data:
+                        # Old format - extract from nested structure
+                        product_description = match_data.get('query', '')
+                        primary_match = match_data.get('primary_match', {})
+                        
+                        if not primary_match:
+                            error_count += 1
+                            continue
+                            
+                        matched_hs_code = primary_match.get('hs_code', 'ERROR')
+                        confidence_score = primary_match.get('confidence', 0.0)
+                        code_description = primary_match.get('code_description', '')
+                        chapter = primary_match.get('chapter', '')
+                        section = primary_match.get('section', '')
+                        
+                        # Required fields - use defaults if not present
+                        quantity = Decimal('1.0')
+                        unit_of_measure = 'PCE'
+                        value = Decimal('0.0')
+                        origin_country = 'XX'
+                        
+                    else:
+                        # New format - direct field access
+                        product_description = match_data.get('product_description', '')
+                        matched_hs_code = match_data.get('matched_hs_code', 'ERROR')
+                        confidence_score = match_data.get('confidence_score', 0.0)
+                        code_description = match_data.get('code_description', '')
+                        chapter = match_data.get('chapter', '')
+                        section = match_data.get('section', '')
+                        
+                        # Required fields from frontend
+                        quantity = Decimal(str(match_data.get('quantity', 1.0)))
+                        unit_of_measure = match_data.get('unit_of_measure', 'PCE')
+                        value = Decimal(str(match_data.get('value', 0.0)))
+                        origin_country = match_data.get('origin_country', 'XX')
+                    
+                    # Validate required fields
+                    logger.info(f"Validation - product_description: '{product_description}', matched_hs_code: '{matched_hs_code}', quantity: {quantity}, unit_of_measure: '{unit_of_measure}', value: {value}, origin_country: '{origin_country}'")
+                    
+                    if not product_description or matched_hs_code == 'ERROR':
+                        logger.error(f"Validation failed: product_description='{product_description}', matched_hs_code='{matched_hs_code}'")
                         error_count += 1
                         continue
                     
@@ -257,12 +313,16 @@ class JobManagementService:
                     product_match = ProductMatch(
                         processing_job_id=processing_job.id,
                         product_description=product_description,
-                        matched_hs_code=primary_match.get('hs_code', 'ERROR'),
-                        confidence_score=Decimal(str(primary_match.get('confidence', 0.0))),
-                        code_description=primary_match.get('code_description', ''),
-                        chapter=primary_match.get('chapter', ''),
-                        section=primary_match.get('section', ''),
-                        requires_manual_review=primary_match.get('confidence', 0.0) < 0.8,
+                        quantity=quantity,
+                        unit_of_measure=unit_of_measure,
+                        value=value,
+                        origin_country=origin_country,
+                        matched_hs_code=matched_hs_code,
+                        confidence_score=Decimal(str(confidence_score)),
+                        code_description=code_description,
+                        chapter=chapter,
+                        section=section,
+                        requires_manual_review=confidence_score < 0.8,
                         user_confirmed=False,
                         alternative_matches=match_data.get('alternative_matches', []),
                         processing_metadata={
@@ -276,6 +336,7 @@ class JobManagementService:
                     
                 except Exception as e:
                     logger.error(f"Error creating ProductMatch for job {job_id}: {str(e)}")
+                    logger.error(f"Failed match data: {match_data}")
                     processing_errors.append(f"Error processing product: {str(e)}")
                     error_count += 1
             
@@ -291,6 +352,8 @@ class JobManagementService:
             else:
                 processing_job.status = ProcessingStatus.COMPLETED_WITH_ERRORS
                 status_message = f"Job completed with {len(processing_errors) + error_count} errors"
+                logger.error(f"Job completion errors - processing_errors: {processing_errors}, error_count: {error_count}")
+                logger.info(f"Created {len(created_matches)} matches out of {len(hs_matches)} total matches")
             
             processing_job.total_products = len(created_matches)
             processing_job.successful_matches = len([m for m in created_matches if m.matched_hs_code != "ERROR"])
