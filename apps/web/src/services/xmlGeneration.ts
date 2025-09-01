@@ -20,6 +20,7 @@ interface XMLGenerationResponse {
   country_schema: string;
   generated_at: string;
   file_size: number;
+  xml_file_size?: number;
   summary?: any;
   validation_errors?: string[];
   error_message?: string;

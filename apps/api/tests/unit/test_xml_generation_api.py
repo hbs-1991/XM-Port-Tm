@@ -56,7 +56,7 @@ class TestXMLGenerationAPI:
         for i in range(3):
             match = Mock(spec=ProductMatch)
             match.id = uuid.uuid4()
-            match.processing_job_id = mock_processing_job.id
+            match.job_id = mock_processing_job.id
             match.product_description = f"Test Product {i+1}"
             match.matched_hs_code = f"123456789{i}"
             match.quantity = Decimal("10.0")

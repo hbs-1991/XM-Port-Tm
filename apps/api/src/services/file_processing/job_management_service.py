@@ -311,7 +311,7 @@ class JobManagementService:
                     
                     # Create ProductMatch record
                     product_match = ProductMatch(
-                        processing_job_id=processing_job.id,
+                        job_id=processing_job.id,
                         product_description=product_description,
                         quantity=quantity,
                         unit_of_measure=unit_of_measure,

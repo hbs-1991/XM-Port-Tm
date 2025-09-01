@@ -172,6 +172,7 @@ async def generate_xml(
                 country_schema=CountrySchemaType(country_schema),
                 generated_at=result.generated_at,
                 file_size=result.file_size,
+                xml_file_size=result.file_size,  # Add correct field name
                 summary=None,  # Can be populated with actual summary if needed
                 validation_errors=None,
                 error_message=None

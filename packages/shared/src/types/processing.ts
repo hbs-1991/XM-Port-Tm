@@ -4,13 +4,14 @@
 
 export interface ProcessingJob {
   id: string;
-  userId?: string;
+  user_id?: string;
   status: ProcessingStatus;
   input_file_name: string;
   input_file_url?: string;
   input_file_size: number;
   output_xml_url?: string;
   xml_generation_status?: string;
+  xml_file_size?: number;
   credits_used: number;
   processing_time_ms?: number;
   total_products: number;
@@ -35,7 +36,7 @@ export enum ProcessingStatus {
 
 export interface ProductMatch {
   id: string;
-  jobId?: string;
+  job_id?: string;
   product_description: string;
   quantity: number;
   unit_of_measure: string;

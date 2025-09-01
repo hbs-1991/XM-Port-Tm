@@ -158,11 +158,12 @@ class XMLGenerationResponse(BaseModel):
     country_schema: CountrySchemaType = Field(..., description="Used country schema")
     generated_at: Optional[datetime] = Field(None, description="Generation timestamp")
     file_size: Optional[int] = Field(None, description="File size in bytes")
+    xml_file_size: Optional[int] = Field(None, description="XML file size in bytes (same as file_size)")
     summary: Optional[XMLGenerationSummary] = Field(None, description="Generation summary statistics")
     validation_errors: Optional[List[ValidationError]] = Field(None, description="Validation errors if any")
     error_message: Optional[str] = Field(None, description="Error message if generation failed")
 
-    @field_validator('file_size')
+    @field_validator('file_size', 'xml_file_size')
     def validate_file_size(cls, v):
         if v is not None and v < 0:
             raise ValueError('File size must be non-negative')

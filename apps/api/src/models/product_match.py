@@ -34,7 +34,7 @@ class ProductMatch(Base):
         CheckConstraint('confidence_score >= 0 AND confidence_score <= 1', name='valid_confidence_score'),
         CheckConstraint('quantity > 0', name='positive_quantity'),
         CheckConstraint('value >= 0', name='positive_value'),
-        CheckConstraint('length(origin_country) = 3', name='valid_origin_country'),
+        CheckConstraint('length(origin_country) >= 2 AND length(origin_country) <= 3', name='valid_origin_country'),
     )
     
     # Relationships
