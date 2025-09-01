@@ -309,7 +309,30 @@ class JobManagementService:
                         error_count += 1
                         continue
                     
-                    # Create ProductMatch record
+                    # Map alternative matches into the model's alternative_hs_codes (ARRAY of strings)
+                    alternative_hs_codes = []
+                    try:
+                        raw_alternatives = match_data.get('alternative_matches', [])
+                        if isinstance(raw_alternatives, list):
+                            for alt in raw_alternatives:
+                                # Support both dicts with hs_code and raw string lists
+                                if isinstance(alt, dict) and 'hs_code' in alt:
+                                    alternative_hs_codes.append(str(alt.get('hs_code')))
+                                elif isinstance(alt, str):
+                                    alternative_hs_codes.append(alt)
+                    except Exception:
+                        # Be resilient; alternatives are optional
+                        alternative_hs_codes = []
+
+                    # Optional vector store reasoning (present in some matching responses)
+                    vector_store_reasoning = None
+                    try:
+                        if 'primary_match' in match_data and isinstance(match_data.get('primary_match'), dict):
+                            vector_store_reasoning = match_data['primary_match'].get('reasoning')
+                    except Exception:
+                        vector_store_reasoning = None
+
+                    # Create ProductMatch record (only with valid model fields)
                     product_match = ProductMatch(
                         job_id=processing_job.id,
                         product_description=product_description,
@@ -319,16 +342,12 @@ class JobManagementService:
                         origin_country=origin_country,
                         matched_hs_code=matched_hs_code,
                         confidence_score=Decimal(str(confidence_score)),
-                        code_description=code_description,
-                        chapter=chapter,
-                        section=section,
+                        # The following additional attributes exist on the model
+                        alternative_hs_codes=alternative_hs_codes if alternative_hs_codes else None,
+                        vector_store_reasoning=vector_store_reasoning,
+                        # Descriptive fields stored if the model supports them
                         requires_manual_review=confidence_score < 0.8,
                         user_confirmed=False,
-                        alternative_matches=match_data.get('alternative_matches', []),
-                        processing_metadata={
-                            'processing_time_ms': match_data.get('processing_time_ms', 0),
-                            'alternatives_count': len(match_data.get('alternative_matches', []))
-                        }
                     )
                     
                     self.db.add(product_match)
