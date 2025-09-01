@@ -45,13 +45,13 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
     if (touched.email && formData.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
-        newErrors.email = 'Please enter a valid email address'
+        newErrors.email = 'Пожалуйста, введите корректный email адрес'
       }
     }
     
     if (touched.password && formData.password) {
       if (formData.password.length < 6) {
-        newErrors.password = 'Password must be at least 6 characters'
+        newErrors.password = 'Пароль должен содержать минимум 6 символов'
       }
     }
     
@@ -134,10 +134,10 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
             </div>
           </div>
           <CardTitle className="text-2xl text-center font-bold">
-            Welcome back
+            Добро пожаловать!
           </CardTitle>
           <CardDescription className="text-center">
-            Enter your credentials to access your account
+            Введите ваши данные для входа в аккаунт
           </CardDescription>
         </CardHeader>
 
@@ -147,7 +147,7 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
               icon={Mail}
               type="email"
               name="email"
-              placeholder="Enter your email"
+              placeholder="Введите ваш email"
               value={formData.email}
               onChange={handleChange}
               onBlur={() => handleBlur('email')}
@@ -156,12 +156,12 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
               disabled={isLoading}
               required
               autoComplete="email"
-              helperText={!touched.email ? "We'll never share your email" : undefined}
+              helperText={!touched.email ? "Мы никогда не передадим ваш email третьим лицам" : undefined}
             />
 
             <PasswordInput
               name="password"
-              placeholder="Enter your password"
+              placeholder="Введите ваш пароль"
               value={formData.password}
               onChange={handleChange}
               onBlur={() => handleBlur('password')}
@@ -180,27 +180,27 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
             <div className="flex items-center justify-between pt-2">
               <label 
                 className="flex items-center space-x-2 cursor-pointer group relative"
-                title="Keep me signed in for 30 days on this device"
+                title="Запомнить меня на 30 дней на этом устройстве"
               >
                 <input
                   type="checkbox"
                   className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition-colors"
                 />
                 <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
-                  Remember me
+                  Запомнить меня
                 </span>
                 {/* Tooltip */}
                 <div className="absolute bottom-full left-0 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-10">
-                  Keep me signed in for 30 days
+                  Оставаться в системе 30 дней
                   <div className="absolute top-full left-3 w-2 h-2 bg-gray-800 transform rotate-45 -mt-1"></div>
                 </div>
               </label>
               <Link
                 href="/auth/forgot-password"
                 className="text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
-                aria-label="Reset your password via email"
+                aria-label="Сбросить пароль по электронной почте"
               >
-                Forgot password?
+                Забыли пароль?
               </Link>
             </div>
 
@@ -219,7 +219,7 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  Вход в систему...
                 </>
               ) : loginSuccess ? (
                 <>
@@ -236,11 +236,11 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  Success!
+                  Успешно!
                 </>
               ) : (
                 <>
-                  Sign in
+                  Войти
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
@@ -251,7 +251,7 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
                 <span className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-4 text-gray-500">Or continue with</span>
+                <span className="bg-white px-4 text-gray-500">Или войдите через</span>
               </div>
             </div>
 
@@ -298,12 +298,12 @@ export function EnhancedLoginForm({ onSuccess, redirectTo = '/dashboard' }: Enha
           </form>
 
           <p className="text-center text-sm text-gray-600 mt-6">
-            Don't have an account?{' '}
+            Нет аккаунта?{' '}
             <Link
               href="/auth/register"
               className="font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors"
             >
-              Sign up for free
+              Зарегистрироваться бесплатно
             </Link>
           </p>
         </CardContent>

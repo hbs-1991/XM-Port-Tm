@@ -12,13 +12,20 @@ import { Upload, FileText, X, AlertCircle, CheckCircle2, FileSpreadsheet } from 
 import { uploadFile } from '@/services/processing';
 import hsMatchingService from '@/services/hsMatching';
 import xmlGenerationService from '@/services/xmlGeneration';
-import { ProcessingJob, ProcessingStatus } from '@shared/types';
+import { ProcessingJob, ProcessingStatus, ProductWithHSCode, ConfidenceLevel } from '@shared/types';
 import * as XLSX from 'xlsx';
 import { FilePreview } from './FilePreview';
 import { EditableSpreadsheet } from './EditableSpreadsheet';
 import { UploadProgress } from './UploadProgress';
 import { UploadValidation } from './UploadValidation';
 import { performClientValidation, validateCSVHeaders } from './validation';
+import { 
+  getOptimalPreviewSize, 
+  getUserPreviewPreferences, 
+  getReadChunkSize,
+  previewPerformanceTracker 
+} from '@/lib/preview-config';
+import { fileProcessingService } from '@/lib/file-processing-service';
 
 interface FileUploadProps {
   onUploadComplete?: (job: ProcessingJob) => void;
@@ -38,6 +45,16 @@ interface UploadedFile {
   xmlGenerating?: boolean;
   xmlDownloadUrl?: string;
   canRetry?: boolean;
+  hsMatches?: any[];
+  hasHSCodes?: boolean;
+  processingMetadata?: {
+    totalRows: number;
+    previewRows: number;
+    processingBatches: number;
+    estimatedTime: number;
+    isPreviewLimited: boolean;
+    statusMessage: string;
+  };
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -50,6 +67,40 @@ const ACCEPTED_TYPES = {
 export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const queryClient = useQueryClient();
+
+  // Helper function to create ProductWithHSCode from file data and HS matches
+  const createProductsWithHSCode = (fileData: any[], hsMatches: any[]): ProductWithHSCode[] => {
+    // Helper function to determine confidence level
+    const getConfidenceLevel = (confidence: number): ConfidenceLevel => {
+      if (confidence >= 0.95) return 'High';
+      if (confidence >= 0.8) return 'Medium';
+      return 'Low';
+    };
+
+    return fileData.map((row: any, index: number) => {
+      const match = hsMatches?.[index];
+      const hsCode = match?.primary_match?.hs_code || '';
+      const confidence = match?.primary_match?.confidence || 0;
+      const alternativeCodes = match?.alternative_matches?.map((alt: any) => alt.hs_code) || [];
+      
+      return {
+        id: `product-${index}`,
+        product_description: row['Product Description'] || '',
+        quantity: Number(row['Quantity']) || 0,
+        unit: row['Unit'] || '',
+        value: Number(row['Value']) || 0,
+        origin_country: row['Origin Country'] || '',
+        unit_price: Number(row['Unit Price']) || 0,
+        hs_code: hsCode,
+        confidence_score: confidence,
+        confidence_level: getConfidenceLevel(confidence),
+        alternative_hs_codes: alternativeCodes,
+        requires_manual_review: confidence < 0.8,
+        user_confirmed: false,
+        vector_store_reasoning: match?.primary_match?.reasoning
+      };
+    });
+  };
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -172,8 +223,18 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
     return null;
   }, []);
 
-  // Parse file content for immediate preview
-  const parseFileContent = async (file: File): Promise<any[]> => {
+  // Parse file content for immediate preview with smart sizing
+  const parseFileContent = async (file: File, maxPreviewRows?: number): Promise<any[]> => {
+    const fileId = `${file.name}-${file.size}`;
+    const timings = previewPerformanceTracker.startTracking(fileId);
+    
+    // Get user preferences and determine optimal preview size
+    const userPrefs = getUserPreviewPreferences();
+    const optimalPreviewSize = maxPreviewRows || getOptimalPreviewSize({
+      fileSize: file.size,
+      userPreference: userPrefs.maxRows
+    });
+    
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
@@ -193,8 +254,12 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
             
             console.log('Excel data parsed:', jsonData);
             
-            // Limit to first 10 rows for preview
-            const previewData = jsonData.slice(0, 10);
+            // Smart preview sizing based on file size and performance
+            const finalPreviewSize = Math.min(optimalPreviewSize, jsonData.length);
+            const previewData = jsonData.slice(0, finalPreviewSize);
+            
+            // Track performance
+            previewPerformanceTracker.endTracking(fileId, timings, finalPreviewSize);
             
             // Ensure consistent column names
             const processedData = previewData.map((row: any) => {
@@ -211,6 +276,7 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
             resolve(processedData.length > 0 ? processedData : []);
           } catch (error) {
             console.error('Error parsing Excel file:', error);
+            previewPerformanceTracker.endTracking(fileId, timings, 0);
             resolve([]);
           }
         };
@@ -268,8 +334,9 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
             
             console.log('Parsed headers:', headers);
             
-            // Parse data rows (limit to first 10 for preview)
-            const dataRows = lines.slice(1, Math.min(11, lines.length));
+            // Smart preview sizing for CSV data
+            const finalPreviewSize = Math.min(optimalPreviewSize, lines.length - 1);
+            const dataRows = lines.slice(1, finalPreviewSize + 1);
             const data = dataRows.map((line, lineIndex) => {
               const values = parseCSVLine(line);
               const row: any = {};
@@ -290,9 +357,14 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
             });
             
             console.log('Parsed data preview:', data);
+            
+            // Track performance
+            previewPerformanceTracker.endTracking(fileId, timings, data.length);
+            
             resolve(data.length > 0 ? data : []);
           } catch (error) {
             console.error('Error parsing CSV file:', error);
+            previewPerformanceTracker.endTracking(fileId, timings, 0);
             resolve([]);
           }
         };
@@ -302,8 +374,8 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
           reject(new Error('Failed to read file'));
         };
         
-        // Read entire file if small, otherwise first 500KB
-        const sizeToRead = Math.min(file.size, 500000);
+        // Smart file reading based on preview needs and file size
+        const sizeToRead = getReadChunkSize(file.size);
         reader.readAsText(file.slice(0, sizeToRead));
       } 
       else {
@@ -337,8 +409,17 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
 
       const fileId = `${file.name}-${Date.now()}`;
       
-      // Parse file content for immediate preview
-      const previewData = await parseFileContent(file);
+      // Process file using enhanced service that separates preview from processing
+      const fileProcessingResult = await fileProcessingService.processFileForPreview(file);
+      
+      const { data: previewData, metadata, summary } = fileProcessingResult;
+      
+      console.log(`File processing result:`, {
+        totalRows: metadata.totalRows,
+        previewRows: metadata.previewRows,
+        batches: metadata.processingBatches,
+        isLimited: metadata.isPreviewLimited
+      });
       
       // Debug log to check preview data
       console.log('Preview data for file:', file.name, previewData);
@@ -348,7 +429,15 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
         id: fileId,
         status: 'validating',
         progress: 0,
-        previewData: previewData.length > 0 ? previewData : undefined
+        previewData: previewData.length > 0 ? previewData : undefined,
+        processingMetadata: {
+          totalRows: metadata.totalRows,
+          previewRows: metadata.previewRows,
+          processingBatches: metadata.processingBatches,
+          estimatedTime: metadata.estimatedTime,
+          isPreviewLimited: metadata.isPreviewLimited,
+          statusMessage: fileProcessingService.getProcessingStatusMessage(metadata)
+        }
       };
       
       console.log('New file object:', newFile);
@@ -485,22 +574,15 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
       
       console.log('HS matching completed:', result);
       
-      // Update the data with HS codes
-      const updatedData = file.previewData.map((row: any, index: number) => {
-        const match = result[index];
-        return {
-          ...row,
-          'HS Code': match?.primary_match?.hs_code || 'No match',
-          'HS Description': match?.primary_match?.code_description || '',
-          'Confidence': match?.primary_match?.confidence ? `${(match.primary_match.confidence * 100).toFixed(1)}%` : ''
-        };
-      });
-      
-      // Update the file data
+      // Update the file data with HS matches
       setUploadedFiles(prev => 
         prev.map(f => 
           f.id === file.id 
-            ? { ...f, previewData: updatedData }
+            ? { 
+                ...f, 
+                hsMatches: result,
+                hasHSCodes: true
+              }
             : f
         )
       );
@@ -611,27 +693,48 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
             {/* Template Download - Compact */}
             <div className="flex items-center justify-between p-2 bg-primary/5 rounded border">
               <div className="flex-1">
-                <p className="text-xs font-medium">Need a template?</p>
-                <p className="text-xs text-muted-foreground">CSV with required columns</p>
+                <p className="text-xs font-medium">Нужен шаблон?</p>
+                <p className="text-xs text-muted-foreground">CSV с обязательными колонками</p>
               </div>
               <Button
                 size="sm"
-                onClick={() => {
-                  const headers = ['Product Description', 'Quantity', 'Unit', 'Value', 'Origin Country', 'Unit Price'];
-                  const csvContent = headers.join(',') + '\nSample Product Description,100,KG,1000.00,US,10.00\n';
-                  const blob = new Blob([csvContent], { type: 'text/csv' });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'trade-data-template.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  document.body.removeChild(a);
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/proxy/api/v1/processing/template/download');
+                    if (!response.ok) {
+                      throw new Error('Failed to download template');
+                    }
+                    
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'upload_template.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                  } catch (error) {
+                    console.error('Template download failed:', error);
+                    // Fallback to client-side generation with Russian headers
+                    const headers = ['№', 'Наименование товара', 'Страна происхождения', 'Количество мест', 'Часть мест', 'Вид упаковки', 'Количество', 'Единица измерение', 'Цена', 'Брутто кг', 'Нетто кг', 'Процедура', 'Преференция', 'BKU', 'Количество в допольнительной ед. изм.', 'Допольнительная ед. изм.'];
+                    // Add UTF-8 BOM for proper Russian character support in Excel
+                    const utf8BOM = '\uFEFF';
+                    const csvContent = utf8BOM + headers.join(',') + '\n1,Пример товара,Россия,1,1,Коробки,100,шт,1000.00,10.5,9.8,40,ОР,123456,50,кг\n';
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'upload_template.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                  }
                 }}
                 className="text-xs h-7 px-3 bg-black text-white hover:bg-gray-800 active:bg-gray-900 active:scale-95 transition-all duration-200 ease-in-out"
               >
-                Download
+                Скачать
               </Button>
             </div>
           </CardContent>
@@ -774,15 +877,43 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
                     {/* File Preview and Editable Spreadsheet - Show immediately after file selection */}
                     {uploadedFile.status !== 'pending' && (
                       <div className="mt-4">
-                        <div className="mb-2 flex items-center justify-between">
-                          <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Data Preview {uploadedFile.status !== 'completed' && uploadedFile.previewData && uploadedFile.previewData.length > 0 && '(First 10 rows)'}
-                          </h5>
-                          {uploadedFile.status === 'validated' && (
-                            <Badge variant="outline" className="text-xs">
-                              Ready to upload
-                            </Badge>
+                        <div className="mb-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Data Preview
+                            </h5>
+                            {uploadedFile.status === 'validated' && (
+                              <Badge variant="outline" className="text-xs">
+                                Ready to upload
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Processing metadata display */}
+                          {uploadedFile.processingMetadata && (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-3 border border-blue-200 dark:border-blue-800">
+                              <div className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                                <p><strong>File Analysis:</strong></p>
+                                <p>• Total rows: {uploadedFile.processingMetadata.totalRows.toLocaleString()}</p>
+                                <p>• Preview showing: {uploadedFile.processingMetadata.previewRows} rows</p>
+                                {uploadedFile.processingMetadata.processingBatches > 1 && (
+                                  <p>• Will process in {uploadedFile.processingMetadata.processingBatches} batches</p>
+                                )}
+                                <p>• Estimated processing time: ~{Math.ceil(uploadedFile.processingMetadata.estimatedTime / 60)} minute(s)</p>
+                                {uploadedFile.processingMetadata.isPreviewLimited && (
+                                  <p className="text-blue-700 dark:text-blue-300 font-medium">
+                                    ⚠️ Backend will process ALL {uploadedFile.processingMetadata.totalRows} rows, not just the preview
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           )}
+                        </div>
+                        
+                        <div className="mb-2">
+                          <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Preview Data {uploadedFile.processingMetadata?.isPreviewLimited ? `(${uploadedFile.processingMetadata.previewRows} of ${uploadedFile.processingMetadata.totalRows} rows)` : ''}
+                          </h5>
                         </div>
                         
                         {/* Show spreadsheet if we have data */}
@@ -802,6 +933,14 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
                                 );
                               }}
                               readOnly={uploadedFile.status !== 'completed'} // Make it read-only until upload completes
+                              hasHSCodes={uploadedFile.hasHSCodes || false}
+                              productsWithHS={uploadedFile.hasHSCodes && uploadedFile.previewData && uploadedFile.hsMatches 
+                                ? createProductsWithHSCode(uploadedFile.previewData, uploadedFile.hsMatches)
+                                : undefined}
+                              onHSCodeUpdate={async (productId: string, hsCode: string) => {
+                                console.log('HS code update requested:', productId, hsCode);
+                                // TODO: Implement HS code update API call
+                              }}
                             />
                             
                             {/* Processing Actions - Only show after successful upload */}
@@ -862,10 +1001,10 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'USA' }:
                                   </svg>
                                   <div>
                                     <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                                      File Ready for Upload
+                                      Файл готов к загрузке
                                     </p>
                                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                                      Your file has been validated successfully. Click the "Upload File for Processing" button above to enable HS Code matching and XML generation features.
+                                      Ваш файл успешно проверен. Нажмите кнопку "Загрузить файл для обработки" выше, чтобы включить сопоставление HS кодов и генерацию XML.
                                     </p>
                                   </div>
                                 </div>

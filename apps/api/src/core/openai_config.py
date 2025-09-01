@@ -20,7 +20,7 @@ if settings.OPENAI_API_KEY:
 
 class HSCodeResult(BaseModel):
     """Structured output model for HS code matching results"""
-    hs_code: str = Field(..., description="The primary HS code identifier")
+    hs_code: int = Field(..., description="The primary 9-digit HS code identifier ")
     code_description: str = Field(..., description="Official description of the HS code")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score between 0 and 1")
     chapter: str = Field(..., description="HS chapter classification")
@@ -39,7 +39,7 @@ class HSCodeMatchResult(BaseModel):
 # Enhanced structured output models for HS code matching
 class HSCodeAlternative(BaseModel):
     """Alternative HS code option with confidence score"""
-    hs_code: str = Field(..., description="Alternative HS code identifier")
+    hs_code: int = Field(..., description="Alternative 9-digit HS code identifier")
     code_description: str = Field(..., description="Official description of the alternative HS code")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for this alternative")
     reasoning: str = Field(..., description="Brief explanation for this alternative classification")
@@ -221,7 +221,7 @@ Provide detailed reasoning for your classification decision."""
         """Create fallback result when agent response is unexpected"""
         return HSCodeMatchResult(
             primary_match=HSCodeResult(
-                hs_code="9999.99.99",
+                hs_code=999999999,
                 code_description="General merchandise - classification pending",
                 confidence=0.3,
                 chapter="99",
@@ -292,7 +292,7 @@ Provide detailed reasoning for your classification decision."""
         """Create error result when matching fails"""
         return HSCodeMatchResult(
             primary_match=HSCodeResult(
-                hs_code="0000.00.00",
+                hs_code=000000000,
                 code_description="Error in classification process",
                 confidence=0.0,
                 chapter="00",

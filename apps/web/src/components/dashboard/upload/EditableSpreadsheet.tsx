@@ -25,8 +25,13 @@ import {
   Plus,
   Minus,
   RotateCcw,
-  Download
+  Download,
+  Info,
+  Check,
+  AlertCircle
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/shared/ui/ui/tooltip';
+import { type ProductWithHSCode, type ConfidenceLevel } from '@shared/types/processing';
 
 interface EditableSpreadsheetProps {
   data: any[];
@@ -36,6 +41,9 @@ interface EditableSpreadsheetProps {
   onSave?: (data: any[]) => Promise<void>;
   maxRows?: number;
   readOnly?: boolean;
+  hasHSCodes?: boolean;
+  productsWithHS?: ProductWithHSCode[];
+  onHSCodeUpdate?: (productId: string, hsCode: string) => Promise<void>;
 }
 
 interface ValidationError {
@@ -51,7 +59,10 @@ export function EditableSpreadsheet({
   onDataChange,
   onSave,
   maxRows = 1000,
-  readOnly = false
+  readOnly = false,
+  hasHSCodes = false,
+  productsWithHS,
+  onHSCodeUpdate
 }: EditableSpreadsheetProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [editingCell, setEditingCell] = useState<{ row: number; column: string } | null>(null);
@@ -61,15 +72,25 @@ export function EditableSpreadsheet({
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [hsCodeEditingCell, setHSCodeEditingCell] = useState<{ row: number } | null>(null);
+  const [hsCodeEditValue, setHSCodeEditValue] = useState('');
+  const [updatingHSCode, setUpdatingHSCode] = useState<string | null>(null);
   
-  const rowsPerPage = 20;
+  // Smart pagination based on data size and performance
+  const getOptimalPageSize = (dataLength: number) => {
+    if (dataLength <= 50) return dataLength; // Show all if small dataset
+    if (dataLength <= 200) return 25; // Medium page size for medium datasets
+    return 20; // Standard page size for large datasets
+  };
+  
+  const rowsPerPage = getOptimalPageSize(localData.length);
   const totalPages = Math.ceil(localData.length / rowsPerPage);
   const startIndex = currentPage * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, localData.length);
   const visibleData = localData.slice(startIndex, endIndex);
 
   // Get column headers from the first row
-  const columns = localData.length > 0 ? Object.keys(localData[0]) : [
+  let baseColumns = localData.length > 0 ? Object.keys(localData[0]) : [
     'Product Description',
     'Quantity',
     'Unit',
@@ -77,6 +98,9 @@ export function EditableSpreadsheet({
     'Origin Country',
     'Unit Price'
   ];
+  
+  // Add HS Code column if we have HS code data
+  const columns = hasHSCodes && productsWithHS ? [...baseColumns, 'HS Code'] : baseColumns;
   
   const requiredColumns = [
     'Product Description',
@@ -290,9 +314,18 @@ export function EditableSpreadsheet({
 
   const exportToCSV = () => {
     const headers = columns.join(',');
-    const rows = localData.map(row => 
+    const rows = localData.map((row, index) => 
       columns.map(col => {
-        const value = row[col];
+        let value = row[col];
+        
+        // Handle HS Code column specially
+        if (col === 'HS Code' && productsWithHS) {
+          const productHS = productsWithHS[index];
+          if (productHS) {
+            value = productHS.hs_code;
+          }
+        }
+        
         // Escape quotes and wrap in quotes if contains comma
         if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
           return `"${value.replace(/"/g, '""')}"`;
@@ -301,11 +334,13 @@ export function EditableSpreadsheet({
       }).join(',')
     );
     
-    const csvContent = [headers, ...rows].join('\n');
+    // Add UTF-8 BOM for proper Russian character support in Excel
+    const utf8BOM = '\uFEFF';
+    const csvContent = utf8BOM + [headers, ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `edited_${fileName.replace(/\.[^/.]+$/, '')}.csv`;
+    link.download = `${hasHSCodes ? 'with_hs_codes_' : 'edited_'}${fileName.replace(/\.[^/.]+$/, '')}.csv`;
     link.click();
   };
 
@@ -315,6 +350,69 @@ export function EditableSpreadsheet({
 
   const goToNextPage = () => {
     setCurrentPage(prev => Math.min(totalPages - 1, prev + 1));
+  };
+
+  // HS Code editing functions
+  const getProductHSData = (rowIndex: number): ProductWithHSCode | undefined => {
+    if (!productsWithHS) return undefined;
+    return productsWithHS[startIndex + rowIndex];
+  };
+
+  const getConfidenceBadgeColor = (level: ConfidenceLevel) => {
+    switch (level) {
+      case 'High': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'Medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'Low': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
+
+  const getConfidenceIcon = (level: ConfidenceLevel) => {
+    switch (level) {
+      case 'High': return <Check className="w-3 h-3" />;
+      case 'Medium': return <AlertCircle className="w-3 h-3" />;
+      case 'Low': return <AlertTriangle className="w-3 h-3" />;
+      default: return <Info className="w-3 h-3" />;
+    }
+  };
+
+  const startHSCodeEdit = (rowIndex: number) => {
+    if (readOnly) return;
+    const productHS = getProductHSData(rowIndex);
+    if (!productHS) return;
+    
+    setHSCodeEditingCell({ row: rowIndex });
+    setHSCodeEditValue(productHS.hs_code);
+  };
+
+  const saveHSCodeEdit = async () => {
+    if (!hsCodeEditingCell || !onHSCodeUpdate) return;
+    
+    const productHS = getProductHSData(hsCodeEditingCell.row);
+    if (!productHS) return;
+
+    // Validate HS code format
+    const hsCodeRegex = /^\d{6,10}(\.\d{2})*$/;
+    if (!hsCodeRegex.test(hsCodeEditValue.trim())) {
+      // Could add error handling here
+      return;
+    }
+
+    try {
+      setUpdatingHSCode(productHS.id);
+      await onHSCodeUpdate(productHS.id, hsCodeEditValue.trim());
+      setHSCodeEditingCell(null);
+      setHSCodeEditValue('');
+    } catch (error) {
+      console.error('Failed to update HS code:', error);
+    } finally {
+      setUpdatingHSCode(null);
+    }
+  };
+
+  const cancelHSCodeEdit = () => {
+    setHSCodeEditingCell(null);
+    setHSCodeEditValue('');
   };
 
   if (!localData.length) {
@@ -344,6 +442,11 @@ export function EditableSpreadsheet({
             <CardTitle className="flex items-center gap-2 text-lg">
               <FileSpreadsheet className="w-5 h-5" />
               {readOnly ? 'Data Preview' : 'Editable Spreadsheet'} - {fileName}
+              {localData.length >= 50 && (
+                <Badge variant="outline" className="text-xs">
+                  Showing {Math.min(localData.length, 100)} of {localData.length} rows
+                </Badge>
+              )}
             </CardTitle>
             <div className="flex items-center gap-4">
               {validationErrors.length > 0 ? (
@@ -357,9 +460,11 @@ export function EditableSpreadsheet({
                   Valid
                 </Badge>
               )}
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {localData.length} row{localData.length !== 1 ? 's' : ''}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {localData.length} row{localData.length !== 1 ? 's' : ''}{localData.length >= 50 ? ' (Preview)' : ''}
+                </span>
+              </div>
             </div>
           </div>
           
@@ -416,7 +521,7 @@ export function EditableSpreadsheet({
         <CardContent>
           <div className="rounded-lg border overflow-hidden">
             <div className="overflow-x-auto">
-              <Table>
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12 text-center">#</TableHead>
@@ -442,6 +547,101 @@ export function EditableSpreadsheet({
                         {startIndex + rowIndex + 1}
                       </TableCell>
                       {columns.map((column) => {
+                        // Handle HS Code column specially
+                        if (column === 'HS Code') {
+                          const productHS = getProductHSData(rowIndex);
+                          if (!productHS) return null;
+
+                          const isHSEditing = hsCodeEditingCell?.row === rowIndex;
+                          const isUpdating = updatingHSCode === productHS.id;
+
+                          return (
+                            <TableCell key={column} className="min-w-48">
+                              <TooltipProvider>
+                                {isHSEditing ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      value={hsCodeEditValue}
+                                      onChange={(e) => setHSCodeEditValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') saveHSCodeEdit();
+                                        if (e.key === 'Escape') cancelHSCodeEdit();
+                                      }}
+                                      placeholder="e.g., 6109.10.00"
+                                      className="h-8"
+                                      autoFocus
+                                    />
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      onClick={saveHSCodeEdit} 
+                                      title="Save HS code"
+                                      disabled={isUpdating}
+                                    >
+                                      <Save className="w-3 h-3" />
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      onClick={cancelHSCodeEdit} 
+                                      title="Cancel edit"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-sm">{productHS.hs_code}</span>
+                                      <Badge className={`text-xs ${getConfidenceBadgeColor(productHS.confidence_level)}`}>
+                                        {getConfidenceIcon(productHS.confidence_level)}
+                                        <span className="ml-1">{productHS.confidence_level}</span>
+                                      </Badge>
+                                      {!readOnly && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => startHSCodeEdit(rowIndex)}
+                                          className="opacity-0 group-hover:opacity-50"
+                                        >
+                                          <Edit2 className="w-3 h-3" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                    
+                                    {productHS.alternative_hs_codes.length > 0 && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
+                                            <Info className="w-3 h-3" />
+                                            <span>{productHS.alternative_hs_codes.length} alternatives</span>
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <div className="space-y-1">
+                                            <p className="font-medium">Alternative HS Codes:</p>
+                                            {productHS.alternative_hs_codes.map((altCode, idx) => (
+                                              <p key={idx} className="font-mono text-xs">{altCode}</p>
+                                            ))}
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                    
+                                    {productHS.requires_manual_review && (
+                                      <Badge variant="outline" className="text-xs">
+                                        <AlertTriangle className="w-3 h-3 mr-1" />
+                                        Review Required
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                              </TooltipProvider>
+                            </TableCell>
+                          );
+                        }
+
+                        // Handle regular columns
                         const isEditing = editingCell?.row === rowIndex && editingCell?.column === column;
                         const cellError = getCellError(rowIndex, column);
                         
@@ -531,7 +731,7 @@ export function EditableSpreadsheet({
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4">
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                Showing {startIndex + 1} to {endIndex} of {localData.length} rows
+                Showing {startIndex + 1} to {endIndex} of {localData.length} rows{localData.length > 100 ? ` (Preview of full dataset)` : ``}
               </div>
               <div className="flex items-center gap-2">
                 <Button

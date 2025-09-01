@@ -91,3 +91,31 @@ export interface JobDetailsResponse {
   product_matches: ProductMatch[];
   statistics: JobDetailsStatistics;
 }
+
+export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
+
+export interface ProductWithHSCode {
+  id: string;
+  product_description: string;
+  quantity: number;
+  unit: string;
+  value: number;
+  origin_country: string;
+  unit_price: number;
+  hs_code: string;
+  confidence_score: number;
+  confidence_level: ConfidenceLevel;
+  alternative_hs_codes: string[];
+  requires_manual_review: boolean;
+  user_confirmed: boolean;
+  vector_store_reasoning?: string;
+}
+
+export interface JobProductsResponse {
+  job_id: string;
+  status: string;
+  products: ProductWithHSCode[];
+  total_products: number;
+  high_confidence_count: number;
+  requires_review_count: number;
+}

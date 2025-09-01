@@ -65,6 +65,23 @@ class ConnectionManager:
         }
         await self.send_personal_message(update_message, user_id)
 
+    async def send_hs_matching_update(self, job_id: str, user_id: str, status: str, data: dict = None):
+        """Send HS code matching update to user"""
+        update_message = {
+            "type": "hs_matching_update",
+            "data": {
+                "jobId": job_id,
+                "status": status,
+                "totalProducts": data.get("totalProducts") if data else None,
+                "processedProducts": data.get("processedProducts") if data else None,
+                "highConfidenceMatches": data.get("highConfidenceMatches") if data else None,
+                "averageConfidence": data.get("averageConfidence") if data else None,
+                "requiresReview": data.get("requiresReview") if data else None,
+                "completedAt": data.get("completedAt") if data else None
+            }
+        }
+        await self.send_personal_message(update_message, user_id)
+
 manager = ConnectionManager()
 
 

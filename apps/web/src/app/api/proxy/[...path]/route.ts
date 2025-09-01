@@ -74,7 +74,12 @@ async function handleRequest(
     
     // Handle different response types
     const responseContentType = response.headers.get('content-type');
-    if (responseContentType?.includes('application/json')) {
+    const contentDisposition = response.headers.get('content-disposition');
+    
+    // Check if this is a file download (has Content-Disposition: attachment)
+    const isFileDownload = contentDisposition?.includes('attachment');
+    
+    if (responseContentType?.includes('application/json') && !isFileDownload) {
       const data = await response.json();
       return NextResponse.json(data, { 
         status: response.status,
@@ -82,7 +87,7 @@ async function handleRequest(
           'Content-Type': 'application/json',
         }
       });
-    } else if (responseContentType?.includes('text/')) {
+    } else if (responseContentType?.includes('text/') && !isFileDownload) {
       const text = await response.text();
       return new NextResponse(text, { 
         status: response.status,
@@ -91,13 +96,20 @@ async function handleRequest(
         }
       });
     } else {
-      // Handle binary data (files, etc.)
+      // Handle binary data (files, etc.) and file downloads
       const blob = await response.blob();
+      const responseHeaders = new Headers({
+        'Content-Type': responseContentType || 'application/octet-stream',
+      });
+      
+      // Forward Content-Disposition header for file downloads
+      if (contentDisposition) {
+        responseHeaders.set('Content-Disposition', contentDisposition);
+      }
+      
       return new NextResponse(blob, { 
         status: response.status,
-        headers: {
-          'Content-Type': responseContentType || 'application/octet-stream',
-        }
+        headers: responseHeaders,
       });
     }
   } catch (error) {

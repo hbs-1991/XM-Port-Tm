@@ -1,16 +1,9 @@
 module.exports = {
-  parser: '@typescript-eslint/parser',
   extends: [
-    'eslint:recommended',
-    '@typescript-eslint/recommended',
-    'prettier'
+    'eslint:recommended'
   ],
-  plugins: ['@typescript-eslint'],
+  plugins: [],
   rules: {
-    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-    '@typescript-eslint/explicit-function-return-type': 'off',
-    '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/no-empty-function': 'off',
     'prefer-const': 'error',
     'no-var': 'error'
   },

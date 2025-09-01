@@ -17,12 +17,22 @@ interface ClientValidationResult {
 }
 
 const REQUIRED_COLUMNS = [
-  'product description',
-  'quantity',
-  'unit',
-  'value',
-  'origin country',
-  'unit price'
+  '№',
+  'Наименование товара',
+  'Страна происхождения',
+  'Количество мест',
+  'Часть мест',
+  'Вид упаковки',
+  'Количество',
+  'Единица измерение',
+  'Цена',
+  'Брутто кг',
+  'Нетто кг',
+  'Процедура',
+  'Преференция',
+  'BKU',
+  'Количество в допольнительной ед. изм.',
+  'Допольнительная ед. изм.'
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -33,6 +43,7 @@ const SUPPORTED_EXTENSIONS = ['.csv', '.xlsx', '.xls'];
  * Perform immediate client-side validation
  */
 export function performClientValidation(file: File): ClientValidationResult {
+  console.log('🔍 Client-side validation starting for file:', file.name);
   const errors: ValidationError[] = [];
   const warnings: string[] = [];
 
@@ -76,6 +87,14 @@ export function performClientValidation(file: File): ClientValidationResult {
   const valid = errors.length === 0;
   const canUpload = valid;
 
+  console.log(`📊 Client validation complete: ${errors.length} errors, ${warnings.length} warnings`);
+  if (errors.length > 0) {
+    console.log('❌ Validation errors:', errors);
+  }
+  if (warnings.length > 0) {
+    console.log('⚠️ Validation warnings:', warnings);
+  }
+
   return {
     valid,
     errors,
@@ -93,6 +112,8 @@ export async function validateCSVHeaders(file: File): Promise<{
   detectedColumns: string[];
   warnings: string[];
 }> {
+  console.log('🔍 Validating CSV headers for file:', file.name);
+  
   return new Promise((resolve) => {
     const reader = new FileReader();
     
@@ -100,22 +121,34 @@ export async function validateCSVHeaders(file: File): Promise<{
       try {
         const text = e.target?.result as string;
         const firstLine = text.split('\n')[0];
-        const headers = firstLine.split(',').map(h => h.trim().toLowerCase().replace(/["']/g, ''));
+        const headers = firstLine.split(',').map(h => h.trim().replace(/["']/g, ''));
+        
+        console.log('📋 Detected headers:', headers);
         
         const missingColumns = REQUIRED_COLUMNS.filter(required => 
-          !headers.some(header => header.includes(required) || required.includes(header))
+          !headers.includes(required)
         );
 
         const warnings = [];
         
         // Check for common column name variations
         const columnMapping: Record<string, string[]> = {
-          'product description': ['description', 'product', 'item', 'goods'],
-          'quantity': ['qty', 'amount', 'count'],
-          'unit': ['uom', 'unit of measure', 'measure'],
-          'value': ['price', 'cost', 'amount'],
-          'origin country': ['country', 'origin', 'country of origin'],
-          'unit price': ['price per unit', 'cost per unit', 'unit cost']
+          '№': ['номер', 'number', 'no', '#'],
+          'Наименование товара': ['товар', 'название', 'product', 'description', 'наименование', 'наименование товара'],
+          'Страна происхождения': ['страна', 'происхождения', 'country', 'origin', 'страна происхождения'],
+          'Количество мест': ['мест', 'места', 'packages', 'количество мест'],
+          'Часть мест': ['часть', 'part', 'части', 'часть мест'],
+          'Вид упаковки': ['упаковка', 'package', 'packaging', 'тара', 'вид упаковки'],
+          'Количество': ['кол-во', 'qty', 'quantity', 'amount', 'количество'],
+          'Единица измерение': ['ед.изм', 'единица', 'unit', 'measure', 'единицы', 'единица измерение'],
+          'Цена': ['стоимость', 'price', 'cost', 'value', 'цена'],
+          'Брутто кг': ['брутто', 'gross', 'вес брутто', 'брутто кг'],
+          'Нетто кг': ['нетто', 'net', 'вес нетто', 'нетто кг'],
+          'Процедура': ['procedure', 'процедуры', 'процедура'],
+          'Преференция': ['preference', 'преференции', 'преференция'],
+          'BKU': ['бку', 'bku'],
+          'Количество в допольнительной ед. изм.': ['доп.кол-во', 'additional quantity', 'количество в допольнительной ед. изм.'],
+          'Допольнительная ед. изм.': ['доп.ед.изм', 'additional unit', 'допольнительная ед. изм.']
         };
 
         for (const [required, variations] of Object.entries(columnMapping)) {
@@ -126,6 +159,12 @@ export async function validateCSVHeaders(file: File): Promise<{
             }
           }
         }
+
+        console.log('📊 Header validation result:', {
+          hasAllRequired: missingColumns.length === 0,
+          missing: missingColumns,
+          warnings: warnings.length
+        });
 
         resolve({
           hasRequiredColumns: missingColumns.length === 0,

@@ -37,9 +37,9 @@ class TestFileProcessingService:
     @pytest.fixture
     def valid_csv_content(self):
         """Valid CSV content for testing"""
-        return """Product Description,Quantity,Unit,Value,Origin Country,Unit Price
-"Test Product 1",100,pieces,500.00,USA,5.00
-"Test Product 2",50,kg,250.50,Canada,5.01
+        return """№,Наименование товара,Страна происхождения,Количество мест,Часть мест,Вид упаковки,Количество,Единица измерение,Цена,Брутто кг,Нетто кг,Процедура,Преференция,BKU,Количество в допольнительной ед. изм.,Допольнительная ед. изм.
+1,"Test Product 1","Россия",1,1,"Коробки",100,"шт",500.00,10.5,9.8,"40","ОР","123456",50,"кг"
+2,"Test Product 2","Китай",2,1,"Мешки",50,"кг",250.50,25.0,22.5,"40","","654321",200,"кг"
 """
     
     @pytest.fixture

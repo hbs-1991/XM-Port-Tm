@@ -52,13 +52,52 @@ ALLOWED_MIME_TYPES = {
     'application/csv',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 }
+# Column mapping from template headers to normalized names
+COLUMN_MAPPING = {
+    '№': 'номер',
+    'Наименование товара': 'наименование_товара',
+    'Страна происхождения': 'страна_происхождения',
+    'Количество мест': 'количество_мест',
+    'Часть мест': 'часть_мест',
+    'Вид упаковки': 'вид_упаковки',
+    'Количество': 'количество',
+    'Единица измерение': 'единица_измерение',
+    'Цена': 'цена',
+    'Брутто кг': 'брутто_кг',
+    'Нетто кг': 'нетто_кг',
+    'Процедура': 'процедура',
+    'Преференция': 'преференция',
+    'BKU': 'bku',
+    'Количество в допольнительной ед. изм.': 'количество_в_допольнительной_ед_изм',
+    'Допольнительная ед. изм.': 'допольнительная_ед_изм'
+}
+
 REQUIRED_COLUMNS = {
-    'product_description', 
-    'quantity', 
-    'unit', 
-    'value', 
-    'origin_country',
-    'unit_price'
+    'номер',
+    'наименование_товара',
+    'страна_происхождения', 
+    'количество_мест',
+    'часть_мест',
+    'вид_упаковки',
+    'количество',
+    'единица_измерение',
+    'цена',
+    'брутто_кг',
+    'нетто_кг'
+    # The following columns are OPTIONAL as per frontend columnMapping.ts:
+    # 'процедура',
+    # 'преференция',
+    # 'bku',
+    # 'количество_в_допольнительной_ед_изм',
+    # 'допольнительная_ед_изм'
+}
+
+OPTIONAL_COLUMNS = {
+    'процедура',
+    'преференция',
+    'bku',
+    'количество_в_допольнительной_ед_изм',
+    'допольнительная_ед_изм'
 }
 
 
@@ -224,14 +263,22 @@ class FileProcessingService:
                     warnings=warnings
                 )
             
-            # Normalize header names (lowercase, replace spaces with underscores)
-            normalized_headers = {header.lower().replace(' ', '_').strip() for header in reader.fieldnames}
+            # Map headers using the column mapping
+            normalized_headers = set()
+            for header in reader.fieldnames:
+                # First try exact match
+                if header in COLUMN_MAPPING:
+                    normalized_headers.add(COLUMN_MAPPING[header])
+                else:
+                    # Fallback to old normalization for backwards compatibility
+                    normalized_headers.add(header.lower().replace(' ', '_').strip())
+            
             missing_columns = REQUIRED_COLUMNS - normalized_headers
             
             if missing_columns:
                 errors.append(FileValidationError(
-                    field="headers",
-                    error=f"Missing required columns: {', '.join(missing_columns)}"
+                    field="headers", 
+                    error=f"Missing required column headers: {', '.join(missing_columns)}. Please ensure your CSV has all required columns."
                 ))
             
             # Validate data rows
@@ -302,14 +349,23 @@ class FileProcessingService:
                     warnings=warnings
                 )
             
-            # Normalize header names
-            normalized_headers = {str(col).lower().replace(' ', '_').strip() for col in df.columns}
+            # Map headers using the column mapping
+            normalized_headers = set()
+            for col in df.columns:
+                col_str = str(col).strip()
+                # First try exact match
+                if col_str in COLUMN_MAPPING:
+                    normalized_headers.add(COLUMN_MAPPING[col_str])
+                else:
+                    # Fallback to old normalization for backwards compatibility
+                    normalized_headers.add(col_str.lower().replace(' ', '_').strip())
+            
             missing_columns = REQUIRED_COLUMNS - normalized_headers
             
             if missing_columns:
                 errors.append(FileValidationError(
-                    field="headers",
-                    error=f"Missing required columns: {', '.join(missing_columns)}"
+                    field="headers", 
+                    error=f"Missing required column headers: {', '.join(missing_columns)}. Please ensure your CSV has all required columns."
                 ))
             
             # Validate data rows
@@ -359,19 +415,33 @@ class FileProcessingService:
         """Validate individual data row"""
         errors = []
         
-        # Normalize row keys
-        normalized_row = {k.lower().replace(' ', '_').strip(): v for k, v in row.items()}
+        # Create reverse mapping for data validation
+        reverse_mapping = {v: k for k, v in COLUMN_MAPPING.items()}
+        
+        # Normalize row keys using column mapping
+        normalized_row = {}
+        for original_key, value in row.items():
+            # First try exact match from column mapping
+            if original_key in COLUMN_MAPPING:
+                normalized_key = COLUMN_MAPPING[original_key]
+            else:
+                # Fallback to old normalization for backwards compatibility
+                normalized_key = original_key.lower().replace(' ', '_').strip()
+            normalized_row[normalized_key] = value
         
         # Check required fields are present and not empty
         for field in REQUIRED_COLUMNS:
             value = normalized_row.get(field)
             if pd.isna(value) or str(value).strip() == '':
                 errors.append(FileValidationError(
-                    field=field,
-                    error=f"Required field '{field}' is empty",
+                    field=f"{field}_row_{row_num}",  # Make field name unique per row
+                    error=f"Required field '{field}' is empty in row {row_num}",
                     row=row_num,
                     column=field
                 ))
+        
+        # Optional fields can be empty, but if present, validate their format
+        # No error if optional fields are empty
         
         # Validate numeric fields
         if 'quantity' in normalized_row:

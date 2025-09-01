@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"services/processing.ts -> next-auth/react\":{\"id\":\"services/processing.ts -> next-auth/react\",\"files\":[]}}"
+self.__REACT_LOADABLE_MANIFEST="{\"lib/file-processing-service.ts -> xlsx\":{\"id\":\"lib/file-processing-service.ts -> xlsx\",\"files\":[]},\"services/processing.ts -> next-auth/react\":{\"id\":\"services/processing.ts -> next-auth/react\",\"files\":[]}}"

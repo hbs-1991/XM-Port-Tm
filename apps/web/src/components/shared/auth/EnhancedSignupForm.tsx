@@ -57,35 +57,35 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
     const newErrors: ValidationErrors = {}
     
     if (touched.firstName && !formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required'
+      newErrors.firstName = 'Имя обязательно для заполнения'
     } else if (touched.firstName && formData.firstName.length < 2) {
-      newErrors.firstName = 'First name must be at least 2 characters'
+      newErrors.firstName = 'Имя должно содержать минимум 2 символа'
     }
     
     if (touched.lastName && !formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required'
+      newErrors.lastName = 'Фамилия обязательна для заполнения'
     } else if (touched.lastName && formData.lastName.length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters'
+      newErrors.lastName = 'Фамилия должна содержать минимум 2 символа'
     }
     
     if (touched.email && formData.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
-        newErrors.email = 'Please enter a valid email address'
+        newErrors.email = 'Пожалуйста, введите корректный email адрес'
       }
     }
     
     if (touched.password && formData.password) {
       if (formData.password.length < 8) {
-        newErrors.password = 'Password must be at least 8 characters'
+        newErrors.password = 'Пароль должен содержать минимум 8 символов'
       } else if (passwordStrength < 3) {
-        newErrors.password = 'Password is too weak - please meet all requirements'
+        newErrors.password = 'Пароль слишком слабый - выполните все требования'
       }
     }
     
     if (touched.confirmPassword && formData.confirmPassword) {
       if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = 'Passwords do not match'
+        newErrors.confirmPassword = 'Пароли не совпадают'
       }
     }
     
@@ -220,17 +220,17 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
             </div>
           </div>
           <CardTitle className="text-2xl text-center font-bold">
-            Create your account
+            Создать аккаунт
           </CardTitle>
           <CardDescription className="text-center">
-            Join XM-Port and start managing your trade operations
+            Присоединяйтесь к XM-Port и начните управлять торговыми операциями
           </CardDescription>
           
           {/* Progress indicator */}
           {progressPercentage > 0 && (
             <div className="mt-4">
               <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                <span>Profile completion</span>
+                <span>Заполнение профиля</span>
                 <span>{progressPercentage}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -251,7 +251,7 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
                 icon={User}
                 type="text"
                 name="firstName"
-                placeholder="First name"
+                placeholder="Имя"
                 value={formData.firstName}
                 onChange={handleChange}
                 onBlur={() => handleBlur('firstName')}
@@ -266,7 +266,7 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
                 icon={User}
                 type="text"
                 name="lastName"
-                placeholder="Last name"
+                placeholder="Фамилия"
                 value={formData.lastName}
                 onChange={handleChange}
                 onBlur={() => handleBlur('lastName')}
@@ -283,7 +283,7 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
               icon={Mail}
               type="email"
               name="email"
-              placeholder="Email address"
+              placeholder="Email адрес"
               value={formData.email}
               onChange={handleChange}
               onBlur={() => handleBlur('email')}
@@ -292,7 +292,7 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
               disabled={isLoading}
               required
               autoComplete="email"
-              helperText={!touched.email ? "We'll never share your email" : undefined}
+              helperText={!touched.email ? "Мы никогда не передадим ваш email третьим лицам" : undefined}
             />
 
             {/* Company field */}
@@ -300,21 +300,21 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
               icon={Building}
               type="text"
               name="companyName"
-              placeholder="Company name (optional)"
+              placeholder="Название компании (необязательно)"
               value={formData.companyName}
               onChange={handleChange}
               onBlur={() => handleBlur('companyName')}
               success={getFieldSuccess('companyName') && formData.companyName.length > 0}
               disabled={isLoading}
               autoComplete="organization"
-              helperText={!touched.companyName ? "Help us customize your experience" : undefined}
+              helperText={!touched.companyName ? "Поможет нам настроить ваш интерфейс" : undefined}
             />
 
             {/* Password field */}
             <div className="space-y-2">
               <PasswordInput
                 name="password"
-                placeholder="Create password"
+                placeholder="Создать пароль"
                 value={formData.password}
                 onChange={handleChange}
                 onBlur={() => handleBlur('password')}
@@ -337,7 +337,7 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
             <EnhancedInput
               type="password"
               name="confirmPassword"
-              placeholder="Confirm password"
+              placeholder="Подтвердить пароль"
               value={formData.confirmPassword}
               onChange={handleChange}
               onBlur={() => handleBlur('confirmPassword')}
@@ -371,16 +371,16 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  Создание аккаунта...
                 </>
               ) : signupSuccess ? (
                 <>
                   <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Account created!
+                  Аккаунт создан!
                 </>
               ) : (
                 <>
-                  Create account
+                  Создать аккаунт
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
@@ -392,7 +392,7 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
                 <span className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-4 text-gray-500">Or continue with</span>
+                <span className="bg-white px-4 text-gray-500">Или зарегистрируйтесь через</span>
               </div>
             </div>
 
@@ -441,12 +441,12 @@ export function EnhancedSignupForm({ onSuccess, redirectTo = '/dashboard' }: Enh
 
           {/* Sign in link */}
           <p className="text-center text-sm text-gray-600 mt-6">
-            Already have an account?{' '}
+            Уже есть аккаунт?{' '}
             <Link
               href="/auth/login"
               className="font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors"
             >
-              Sign in here
+              Войти
             </Link>
           </p>
         </CardContent>

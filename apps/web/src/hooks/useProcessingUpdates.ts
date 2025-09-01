@@ -7,6 +7,7 @@ import {
   type ProcessingUpdateMessage, 
   type NotificationMessage, 
   type WebSocketMessage,
+  type HSMatchingUpdateMessage,
   type ConnectionStatus 
 } from '../services/websocketService'
 
@@ -92,6 +93,18 @@ export const useProcessingUpdates = (
           timestamp: message.timestamp
         }
         addNotification(updateNotification)
+      } else if (message.type === 'hs_matching_update') {
+        // Create a notification for HS matching updates
+        const hsUpdateNotification: NotificationMessage = {
+          type: 'notification',
+          level: message.data.status === 'completed' ? 'success' : 
+                 message.data.status === 'failed' ? 'error' : 'info',
+          message: message.data.status === 'completed' 
+            ? `HS code matching completed for ${message.data.totalProducts} products`
+            : `HS code matching ${message.data.status} for job ${message.data.jobId}`,
+          timestamp: Date.now()
+        }
+        addNotification(hsUpdateNotification)
       } else if (message.type === 'notification') {
         addNotification(message)
       }

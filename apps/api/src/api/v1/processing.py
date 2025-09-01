@@ -1,7 +1,10 @@
 """
 File processing API endpoints
 """
+import os
+from pathlib import Path
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form, Request
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
@@ -10,7 +13,7 @@ from src.core.database import get_db, sync_session_maker
 from src.core.config import get_settings
 from src.models.user import User
 from src.services.file_processing import FileProcessingService
-from src.schemas.processing import FileUploadResponse, FileUploadError, ProductData
+from src.schemas.processing import FileUploadResponse, FileUploadError, ProductData, JobProductsResponse, HSCodeUpdateRequest
 from src.middleware.rate_limit import limiter, UPLOAD_RATE_LIMITS
 
 settings = get_settings()
@@ -617,6 +620,147 @@ async def get_job_details(
         )
 
 
+@router.get("/jobs/{job_id}/products", response_model=JobProductsResponse)
+async def get_job_products(
+    job_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get processing job products with HS code data for spreadsheet preview
+    
+    - **job_id**: Processing job UUID
+    
+    Returns product data with HS codes, confidence scores, and alternative codes
+    for display in the EditableSpreadsheet component
+    """
+    try:
+        from sqlalchemy.orm import joinedload
+        from src.models.processing_job import ProcessingJob
+        from src.models.product_match import ProductMatch
+        
+        # Query job with product matches
+        job = db.query(ProcessingJob).options(
+            joinedload(ProcessingJob.product_matches)
+        ).filter(
+            ProcessingJob.id == job_id,
+            ProcessingJob.user_id == current_user.id
+        ).first()
+        
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail="Processing job not found or access denied"
+            )
+        
+        # Format products with HS code data
+        products = []
+        for match in job.product_matches:
+            # Calculate confidence level (High/Medium/Low)
+            confidence_score = float(match.confidence_score)
+            if confidence_score >= 0.95:
+                confidence_level = "High"
+            elif confidence_score >= 0.8:
+                confidence_level = "Medium" 
+            else:
+                confidence_level = "Low"
+            
+            product = {
+                "id": str(match.id),
+                "product_description": match.product_description,
+                "quantity": float(match.quantity),
+                "unit": match.unit_of_measure,
+                "value": float(match.value),
+                "origin_country": match.origin_country,
+                "unit_price": round(float(match.value) / float(match.quantity), 2),
+                "hs_code": match.matched_hs_code,
+                "confidence_score": confidence_score,
+                "confidence_level": confidence_level,
+                "alternative_hs_codes": match.alternative_hs_codes or [],
+                "requires_manual_review": match.requires_manual_review,
+                "user_confirmed": match.user_confirmed,
+                "vector_store_reasoning": match.vector_store_reasoning
+            }
+            products.append(product)
+        
+        return {
+            "job_id": job_id,
+            "status": job.status.value,
+            "products": products,
+            "total_products": len(products),
+            "high_confidence_count": len([p for p in products if p["confidence_level"] == "High"]),
+            "requires_review_count": len([p for p in products if p["requires_manual_review"]])
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving job products: {str(e)}"
+        )
+
+
+@router.put("/jobs/{job_id}/products/{product_id}/hs-code")
+async def update_product_hs_code(
+    job_id: str,
+    product_id: str,
+    request: HSCodeUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update HS code for a specific product (manual editing)
+    
+    - **job_id**: Processing job UUID
+    - **product_id**: Product match UUID  
+    - **hs_code**: New HS code (6-10 digits, optional dots)
+    
+    Validates HS code format and updates the product match record
+    """
+    try:
+        from src.models.product_match import ProductMatch
+        from src.models.processing_job import ProcessingJob
+        import re
+        
+        # Extract HS code from request (validation already done by Pydantic)
+        hs_code = request.hs_code
+        
+        # Query product match with job verification
+        product_match = db.query(ProductMatch).join(ProcessingJob).filter(
+            ProductMatch.id == product_id,
+            ProcessingJob.id == job_id,
+            ProcessingJob.user_id == current_user.id
+        ).first()
+        
+        if not product_match:
+            raise HTTPException(
+                status_code=404,
+                detail="Product not found or access denied"
+            )
+        
+        # Update HS code and mark as user confirmed
+        product_match.matched_hs_code = hs_code
+        product_match.user_confirmed = True
+        product_match.requires_manual_review = False
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "HS code updated successfully",
+            "product_id": product_id,
+            "new_hs_code": hs_code
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating HS code: {str(e)}"
+        )
+
+
 @router.post("/process-with-hs-matching", response_model=dict)
 @limiter.limit(UPLOAD_RATE_LIMITS["per_minute"])
 @limiter.limit(UPLOAD_RATE_LIMITS["per_hour"]) 
@@ -704,4 +848,46 @@ async def process_file_with_hs_matching(
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error during file processing: {str(e)}"
+        )
+
+
+@router.get("/template/download")
+async def download_csv_template():
+    """
+    Download CSV template with Russian column headers in UTF-8 format
+    
+    Returns a CSV file with UTF-8 BOM for proper Russian character support
+    in Excel and other applications.
+    """
+    template_path = Path(__file__).parent.parent.parent / "templates" / "csv_template.csv"
+    
+    if not template_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="CSV template file not found"
+        )
+    
+    # Read the template and add UTF-8 BOM for proper Russian character support
+    try:
+        with open(template_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Add UTF-8 BOM (Byte Order Mark) for Excel compatibility with Russian characters
+        utf8_bom = '\ufeff'
+        content_with_bom = utf8_bom + content
+        
+        # Create response with proper UTF-8 encoding
+        from fastapi.responses import Response
+        return Response(
+            content=content_with_bom.encode('utf-8'),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": "attachment; filename=upload_template.csv",
+                "Content-Type": "text/csv; charset=utf-8"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading template file: {str(e)}"
         )

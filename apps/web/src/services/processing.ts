@@ -61,6 +61,29 @@ class ProcessingService {
     return response;
   }
 
+  async validateFile(file: File): Promise<{
+    valid: boolean;
+    errors: any[];
+    warnings: string[];
+    total_rows: number;
+    valid_rows: number;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await this.fetchWithAuth('/api/v1/processing/validate', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Validation failed: ${error}`);
+    }
+
+    return response.json();
+  }
+
   async uploadFile({ 
     file, 
     fileId, 
@@ -228,6 +251,62 @@ class ProcessingService {
     const data = await response.json();
     return data;
   }
+
+  async getJobProducts(jobId: string): Promise<{
+    job_id: string;
+    status: string;
+    products: Array<{
+      id: string;
+      product_description: string;
+      quantity: number;
+      unit: string;
+      value: number;
+      origin_country: string;
+      unit_price: number;
+      hs_code: string;
+      confidence_score: number;
+      confidence_level: 'High' | 'Medium' | 'Low';
+      alternative_hs_codes: string[];
+      requires_manual_review: boolean;
+      user_confirmed: boolean;
+      vector_store_reasoning?: string;
+    }>;
+    total_products: number;
+    high_confidence_count: number;
+    requires_review_count: number;
+  }> {
+    const response = await this.fetchWithAuth(`/api/v1/processing/jobs/${jobId}/products`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch job products: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  async updateHSCode(jobId: string, productId: string, hsCode: string): Promise<{
+    success: boolean;
+    message: string;
+    product_id: string;
+    new_hs_code: string;
+  }> {
+    const response = await this.fetchWithAuth(`/api/v1/processing/jobs/${jobId}/products/${productId}/hs-code`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ hs_code: hsCode }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to update HS code: ${response.status}`);
+    }
+
+    return await response.json();
+  }
 }
 
 // Create singleton instance
@@ -241,5 +320,7 @@ export const cancelProcessingJob = processingService.cancelProcessingJob.bind(pr
 export const retryProcessingJob = processingService.retryProcessingJob.bind(processingService);
 export const downloadResults = processingService.downloadResults.bind(processingService);
 export const validateFile = processingService.validateFile.bind(processingService);
+export const getJobProducts = processingService.getJobProducts.bind(processingService);
+export const updateHSCode = processingService.updateHSCode.bind(processingService);
 
 export default processingService;

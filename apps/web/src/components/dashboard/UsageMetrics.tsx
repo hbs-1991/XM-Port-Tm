@@ -173,17 +173,17 @@ export function UsageMetrics({
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Total Jobs"
+          title="Всего задач"
           value={processingStats?.totalJobs || 0}
-          subtitle="All time"
+          subtitle="За все время"
           icon={BarChart3}
           color="blue"
         />
         
         <MetricCard
-          title="Success Rate"
+          title="Процент успеха"
           value={`${processingStats?.successRate?.toFixed(1) || '0'}%`}
-          subtitle="Processing success"
+          subtitle="Успешная обработка"
           icon={CheckCircle}
           color={(processingStats?.successRate || 0) > 90 ? 'green' : (processingStats?.successRate || 0) > 75 ? 'yellow' : 'red'}
         />
@@ -191,13 +191,13 @@ export function UsageMetrics({
         <MetricCard
           title="Avg. Confidence"
           value={`${displayStats?.averageConfidence?.toFixed(1) || '0'}%`}
-          subtitle="AI matching confidence"
+          subtitle="Уверенность ИИ сопоставления"
           icon={Target}
           color={(displayStats?.averageConfidence || 0) > 85 ? 'green' : (displayStats?.averageConfidence || 0) > 70 ? 'yellow' : 'red'}
         />
         
         <MetricCard
-          title="This Month"
+          title="В этом месяце"
           value={monthlyUsage?.jobsCompleted || 0}
           subtitle={`${monthlyUsage?.month || ''} ${monthlyUsage?.year || ''}`}
           icon={Calendar}
@@ -223,7 +223,7 @@ export function UsageMetrics({
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-gray-600">Completed Jobs</span>
+                  <span className="text-sm text-gray-600">Завершенных задач</span>
                 </div>
                 <span className="font-semibold text-green-600">
                   {(processingStats?.completedJobs || 0).toLocaleString()}
@@ -233,7 +233,7 @@ export function UsageMetrics({
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                   <XCircle className="h-4 w-4 text-red-500" />
-                  <span className="text-sm text-gray-600">Failed Jobs</span>
+                  <span className="text-sm text-gray-600">Неудачных задач</span>
                 </div>
                 <span className="font-semibold text-red-600">
                   {(processingStats?.failedJobs || 0).toLocaleString()}
@@ -243,7 +243,7 @@ export function UsageMetrics({
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                   <Target className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-gray-600">Total Products</span>
+                  <span className="text-sm text-gray-600">Всего товаров</span>
                 </div>
                 <span className="font-semibold">
                   {(processingStats?.totalProducts || 0).toLocaleString()}
@@ -253,7 +253,7 @@ export function UsageMetrics({
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-gray-600">Successful Matches</span>
+                  <span className="text-sm text-gray-600">Успешных совпадений</span>
                 </div>
                 <span className="font-semibold text-green-600">
                   {(processingStats?.successfulMatches || 0).toLocaleString()}

@@ -61,6 +61,20 @@ export interface ProcessingUpdateMessage {
   data?: Record<string, any>
 }
 
+export interface HSMatchingUpdateMessage {
+  type: 'hs_matching_update'
+  data: {
+    jobId: string
+    status: 'completed' | 'processing' | 'failed'
+    totalProducts?: number
+    processedProducts?: number
+    highConfidenceMatches?: number
+    averageConfidence?: number
+    requiresReview?: number
+    completedAt?: string
+  }
+}
+
 export interface NotificationMessage {
   type: 'notification'
   level: 'info' | 'success' | 'warning' | 'error'
@@ -68,7 +82,7 @@ export interface NotificationMessage {
   timestamp: number
 }
 
-export type WebSocketMessage = JobUpdateMessage | ProcessingUpdateMessage | NotificationMessage
+export type WebSocketMessage = JobUpdateMessage | ProcessingUpdateMessage | HSMatchingUpdateMessage | NotificationMessage
 
 export interface ConnectionStatus {
   connected: boolean

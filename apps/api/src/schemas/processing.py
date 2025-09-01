@@ -114,6 +114,55 @@ class ProductData(BaseModel):
         return v
 
 
+class ProductDataWithHS(BaseModel):
+    """Schema for product data with HS code information"""
+    id: str = Field(..., description="Product match UUID")
+    product_description: str = Field(..., description="Product description")
+    quantity: float = Field(..., gt=0, description="Product quantity")
+    unit: str = Field(..., description="Unit of measure")
+    value: float = Field(..., gt=0, description="Product value")
+    origin_country: str = Field(..., description="Origin country")
+    unit_price: float = Field(..., gt=0, description="Unit price")
+    hs_code: str = Field(..., description="Matched HS code")
+    confidence_score: float = Field(..., ge=0, le=1, description="Matching confidence score (0-1)")
+    confidence_level: str = Field(..., description="Confidence level (High/Medium/Low)")
+    alternative_hs_codes: List[str] = Field(default_factory=list, description="Alternative HS codes")
+    requires_manual_review: bool = Field(..., description="Whether product requires manual review")
+    user_confirmed: bool = Field(..., description="Whether user has confirmed the HS code")
+    vector_store_reasoning: Optional[str] = Field(None, description="AI reasoning for HS code match")
+
+
+class JobProductsResponse(BaseModel):
+    """Response schema for job products with HS code data"""
+    job_id: str = Field(..., description="Processing job UUID")
+    status: str = Field(..., description="Job processing status")
+    products: List[ProductDataWithHS] = Field(..., description="Products with HS code data")
+    total_products: int = Field(..., description="Total number of products")
+    high_confidence_count: int = Field(..., description="Number of high confidence matches")
+    requires_review_count: int = Field(..., description="Number of products requiring review")
+
+
+class HSCodeUpdateRequest(BaseModel):
+    """Schema for HS code update request"""
+    hs_code: str = Field(..., description="New HS code (6-10 digits with optional dots)")
+    
+    @validator('hs_code')
+    def validate_hs_code_format(cls, v):
+        import re
+        v = v.strip()
+        # Allow formats: 610910(6), 6109.10(4.2), 6109.10.00(4.2.2), 61091000(8), 6109100000(10)
+        patterns = [
+            r'^\d{6}$',              # 610910
+            r'^\d{4}\.\d{2}$',       # 6109.10  
+            r'^\d{4}\.\d{2}\.\d{2}$',# 6109.10.00
+            r'^\d{8}$',              # 61091000
+            r'^\d{10}$'              # 6109100000
+        ]
+        if not any(re.match(pattern, v) for pattern in patterns):
+            raise ValueError('Invalid HS code format. Must be 6-10 digits with optional dots (e.g., 6109.10.00)')
+        return v
+
+
 class FileUploadError(BaseModel):
     """Schema for file upload errors"""
     error_code: str = Field(..., description="Error code")

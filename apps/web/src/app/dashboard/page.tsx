@@ -253,7 +253,7 @@ export default function DashboardPage() {
         <Button asChild size="lg" className="shadow-md">
           <Link href="/dashboard/upload">
             <Upload className="mr-2 h-5 w-5" />
-            Upload New File
+            Загрузить новый файл
           </Link>
         </Button>
       </div>
@@ -263,13 +263,13 @@ export default function DashboardPage() {
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xl">Recent Processing Jobs</CardTitle>
+              <CardTitle className="text-xl">Последние задачи обработки</CardTitle>
               <CardDescription>
-                Your latest file processing activities
+                Ваши последние операции по обработке файлов
               </CardDescription>
             </div>
             <Button variant="outline" size="sm" asChild>
-              <Link href="/dashboard/history">View All</Link>
+              <Link href="/dashboard/history">Показать все</Link>
             </Button>
           </div>
         </CardHeader>
@@ -307,7 +307,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <BarChart3 className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg">Analytics & Charts</CardTitle>
+              <CardTitle className="text-lg">Аналитика и графики</CardTitle>
             </div>
             <Button variant="ghost" size="sm">
               {showAnalytics ? (
@@ -319,7 +319,7 @@ export default function DashboardPage() {
           </div>
           {!showAnalytics && (
             <CardDescription>
-              Click to view detailed performance metrics and trends
+              Нажмите для просмотра подробных метрик производительности и трендов
             </CardDescription>
           )}
         </CardHeader>

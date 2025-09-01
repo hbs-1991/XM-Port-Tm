@@ -23,6 +23,14 @@ import {
   CheckCircle2,
   FileSpreadsheet
 } from 'lucide-react';
+import { 
+  mapHeaders, 
+  validateColumnValue, 
+  validateCrossFields, 
+  getDisplayName, 
+  getMissingColumns,
+  COLUMN_MAPPINGS 
+} from './columnMapping';
 
 interface FilePreviewProps {
   data: any[];
@@ -35,7 +43,15 @@ interface FilePreviewProps {
 interface ValidationError {
   row: number;
   column: string;
+  canonical: string;
   message: string;
+}
+
+interface ColumnInfo {
+  originalName: string;
+  canonical: string;
+  displayName: string;
+  required: boolean;
 }
 
 export function FilePreview({ 
@@ -50,6 +66,7 @@ export function FilePreview({
   const [editValue, setEditValue] = useState('');
   const [localData, setLocalData] = useState(data);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [columnInfo, setColumnInfo] = useState<ColumnInfo[]>([]);
   
   const rowsPerPage = 10;
   const totalPages = Math.ceil(localData.length / rowsPerPage);
@@ -57,80 +74,105 @@ export function FilePreview({
   const endIndex = Math.min(startIndex + rowsPerPage, localData.length);
   const visibleData = localData.slice(startIndex, endIndex);
 
-  // Get column headers from the first row
-  const columns = localData.length > 0 ? Object.keys(localData[0]) : [];
-  const requiredColumns = [
-    'Product Description',
-    'Quantity',
-    'Unit',
-    'Value', 
-    'Origin Country',
-    'Unit Price'
-  ];
+  // Get column headers and map them
+  const originalColumns = localData.length > 0 ? Object.keys(localData[0]) : [];
+  
+  useEffect(() => {
+    if (originalColumns.length > 0) {
+      // Map headers and create column info
+      const headerMapping = mapHeaders(originalColumns);
+      const info: ColumnInfo[] = originalColumns.map(originalName => {
+        const canonical = headerMapping[originalName] || originalName;
+        const mapping = COLUMN_MAPPINGS.find(m => m.canonical === canonical);
+        
+        return {
+          originalName,
+          canonical,
+          displayName: getDisplayName(canonical, 'ru'),
+          required: mapping?.required || false
+        };
+      });
+      
+      setColumnInfo(info);
+      console.log('Column mapping established:', info);
+    }
+  }, [originalColumns]);
 
   useEffect(() => {
-    validateData();
-  }, [localData]);
+    if (localData.length > 0) {
+      validateData();
+    }
+  }, [localData, columnInfo]);
 
   const validateData = () => {
+    console.log('🔍 Starting validation...');
     const errors: ValidationError[] = [];
     
-    localData.forEach((row, index) => {
-      // Check required columns
-      requiredColumns.forEach(column => {
-        const value = row[column];
-        if (!value || (typeof value === 'string' && value.trim() === '')) {
-          errors.push({
-            row: index,
-            column,
-            message: 'Required field is empty'
-          });
-        }
+    // Check for missing required columns
+    const missingColumns = getMissingColumns(originalColumns);
+    if (missingColumns.length > 0) {
+      console.log('❌ Missing required columns:', missingColumns);
+      missingColumns.forEach(canonical => {
+        errors.push({
+          row: -1, // Header-level error
+          column: 'header',
+          canonical,
+          message: `Отсутствует обязательный столбец: ${getDisplayName(canonical, 'ru')}`
+        });
       });
-
-      // Validate numeric fields
-      ['Quantity', 'Value', 'Unit Price'].forEach(column => {
-        const value = row[column];
-        if (value && isNaN(Number(value))) {
-          errors.push({
-            row: index,
-            column,
-            message: 'Must be a valid number'
-          });
-        }
-      });
-
-      // Validate positive numeric fields
-      ['Quantity', 'Value', 'Unit Price'].forEach(column => {
-        const value = Number(row[column]);
-        if (value && value <= 0) {
-          errors.push({
-            row: index,
-            column,
-            message: 'Must be greater than 0'
-          });
-        }
-      });
-
-      // Cross-field validation: Quantity × Unit Price ≈ Value
-      const quantity = Number(row['Quantity']);
-      const unitPrice = Number(row['Unit Price']);
-      const value = Number(row['Value']);
+    }
+    
+    localData.forEach((row, rowIndex) => {
+      console.log(`Validating row ${rowIndex + 1}:`, row);
       
-      if (quantity && unitPrice && value) {
-        const calculatedValue = quantity * unitPrice;
-        const tolerance = Math.max(calculatedValue * 0.001, 0.01); // 0.1% tolerance
+      // Create mapped row for validation
+      const mappedRow: { [key: string]: any } = {};
+      columnInfo.forEach(col => {
+        mappedRow[col.canonical] = row[col.originalName];
+      });
+      
+      // Validate each column
+      columnInfo.forEach(col => {
+        const value = row[col.originalName];
+        const validation = validateColumnValue(value, col.canonical);
         
-        if (Math.abs(calculatedValue - value) > tolerance) {
+        if (!validation.valid && validation.error) {
+          console.log(`❌ Row ${rowIndex + 1}, Column ${col.originalName}: ${validation.error}`);
           errors.push({
-            row: index,
-            column: 'Value',
-            message: `Value should be approximately ${calculatedValue.toFixed(2)} (Quantity × Unit Price)`
+            row: rowIndex,
+            column: col.originalName,
+            canonical: col.canonical,
+            message: validation.error
           });
         }
-      }
+      });
+      
+      // Cross-field validation
+      const crossFieldErrors = validateCrossFields(mappedRow);
+      crossFieldErrors.forEach(crossError => {
+        crossError.columns.forEach(canonical => {
+          const colInfo = columnInfo.find(c => c.canonical === canonical);
+          if (colInfo) {
+            console.log(`❌ Cross-field error in row ${rowIndex + 1}: ${crossError.error}`);
+            errors.push({
+              row: rowIndex,
+              column: colInfo.originalName,
+              canonical,
+              message: crossError.error
+            });
+          }
+        });
+      });
     });
 
+    console.log(`📊 Validation complete: ${errors.length} errors found`);
+    console.table(errors.map(e => ({
+      row: e.row + 1,
+      column: e.column,
+      canonical: e.canonical,
+      message: e.message
+    })));
+    
     setValidationErrors(errors);
   };
 
@@ -143,13 +185,14 @@ export function FilePreview({
 
   const getCellClassName = (rowIndex: number, column: string) => {
     const error = getCellError(rowIndex, column);
+    const colInfo = columnInfo.find(c => c.originalName === column);
     const baseClasses = 'p-2 text-sm';
     
     if (error) {
       return `${baseClasses} bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800`;
     }
     
-    if (!requiredColumns.includes(column)) {
+    if (colInfo && !colInfo.required) {
       return `${baseClasses} bg-gray-50 dark:bg-gray-800/50`;
     }
     
@@ -240,16 +283,24 @@ export function FilePreview({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12 text-center">#</TableHead>
-                    {columns.map((column) => (
-                      <TableHead key={column} className="min-w-32">
-                        <div className="flex items-center gap-1">
-                          {column}
-                          {requiredColumns.includes(column) && (
-                            <span className="text-red-500">*</span>
-                          )}
-                        </div>
-                      </TableHead>
-                    ))}
+                    {originalColumns.map((column) => {
+                      const colInfo = columnInfo.find(c => c.originalName === column);
+                      return (
+                        <TableHead key={column} className="min-w-32">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">{column}</span>
+                            {colInfo?.displayName !== column && (
+                              <span className="text-xs text-gray-500">
+                                ({colInfo?.displayName})
+                              </span>
+                            )}
+                            {colInfo?.required && (
+                              <span className="text-red-500">*</span>
+                            )}
+                          </div>
+                        </TableHead>
+                      );
+                    })}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -258,7 +309,7 @@ export function FilePreview({
                       <TableCell className="text-center text-gray-500 dark:text-gray-400 font-mono text-xs">
                         {startIndex + rowIndex + 1}
                       </TableCell>
-                      {columns.map((column) => {
+                      {originalColumns.map((column) => {
                         const isEditing = editingCell?.row === rowIndex && editingCell?.column === column;
                         const cellError = getCellError(rowIndex, column);
                         
