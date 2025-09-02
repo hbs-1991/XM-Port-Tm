@@ -57,22 +57,22 @@
   <Traders>
     <Exporter>
       <Exporter_code/>
-      <Exporter_name>"ITS Investment &amp; Trading Services AG"</Exporter_name>
+      <Exporter_name>"Название экспортера"</Exporter_name>
     </Exporter>
     <Consignee>
-      <Consignee_code>102211003002</Consignee_code>
-      <Consignee_name>"Iner Täjirçilik Söwdasy - Awto Hyzmat Merkezi" hojalyk jemgyýeti</Consignee_name>
+      <Consignee_code>Налоговый номер получателя</Consignee_code>
+      <Consignee_name><null/></Consignee_name>
     </Consignee>
     <Financial>
-      <Financial_code>102211003002</Financial_code>
-      <Financial_name>"Iner Täjirçilik Söwdasy - Awto Hyzmat Merkezi" hojalyk jemgyýeti</Financial_name>
+      <Financial_code>Налоговый номер финансового агента</Financial_code>
+      <Financial_name><null/></Financial_name>
     </Financial>
   </Traders>
 
   <!-- Declarant -->
   <Declarant>
-    <Declarant_code>102211002668</Declarant_code>
-    <Declarant_name>"Turan Merkez" hususy kärhanasy</Declarant_name>
+    <Declarant_code>Налоговый номер декларанта</Declarant_code>
+    <Declarant_name><null/></Declarant_name>
     <Reference><Number/></Reference>
   </Declarant>
 
@@ -80,16 +80,16 @@
   <General_information>
     <Country>
       <Country_first_destination/>
-      <Trading_country>CH</Trading_country>
+      <Trading_country>TR</Trading_country>
       <Export>
-        <Export_country_code>CH</Export_country_code>
+        <Export_country_code>TR</Export_country_code>
         <Export_country_name>Şweýsariýa</Export_country_name>
         <Export_country_region/>
       </Export>
       <Destination>
         <Destination_country_code>TM</Destination_country_code>
-        <Destination_country_name>Türkmenistan</Destination_country_name>
-        <Destination_country_region/>
+          <Destination_country_name/>
+          <Destination_country_region/>
       </Destination>
       <Country_of_origin_name/>
     </Country>
@@ -102,15 +102,15 @@
   <Transport>
     <Means_of_transport>
       <Departure_arrival_information>
-        <Identity>1 BH2664AG/76AAS312/WOLWO</Identity>
-        <Nationality>TM</Nationality>
+        <Identity><null/></Identity>
+        <Nationality><null/></Nationality>
       </Departure_arrival_information>
       <Border_information>
-        <Identity>1 DAGISTAN</Identity>
-        <Nationality>AZ</Nationality>
-        <Mode>10</Mode>
+        <Identity><null/></Identity>
+        <Nationality><null/></Nationality>
+        <Mode><null/></Mode>
       </Border_information>
-      <Inland_mode_of_transport>30</Inland_mode_of_transport>
+      <Inland_mode_of_transport><null/></Inland_mode_of_transport>
     </Means_of_transport>
     <Container_flag>false</Container_flag>
     <Delivery_terms>
@@ -125,14 +125,14 @@
 
   <!-- Financial (placeholders) -->
   <Financial>
-    <Financial_transaction><code1>1</code1><code2>0</code2></Financial_transaction>
+    <Financial_transaction><code1>7</code1><code2>3</code2></Financial_transaction>
     <Bank><Code><null/></Code><Name><null/></Name><Branch/><Reference/><Transaction><null/></Transaction><Date/></Bank>
     <Terms><Code><null/></Code><Description><null/></Description></Terms>
     <Total_invoice/>
     <Deffered_payment_reference><null/></Deffered_payment_reference>
     <Mode_of_payment>NAGT HASAPLAŞYK</Mode_of_payment>
-    <Amounts><Total_manual_taxes/><Global_taxes>0.0</Global_taxes><Totals_taxes>0.0</Totals_taxes></Amounts>
-    <Guarantee><Name><null/></Name><Amount>0.0</Amount><Date/><Excluded_country><Code><null/></Code><Name><null/></Name></Excluded_country></Guarantee>
+    <Amounts><Total_manual_taxes/><Global_taxes/><Totals_taxes/></Amounts>
+    <Guarantee><Name><null/></Name><Amount/><Date/><Excluded_country><Code><null/></Code><Name><null/></Name></Excluded_country></Guarantee>
   </Financial>
 
   <Warehouse><Identification><null/></Identification><Delay/></Warehouse>
@@ -151,18 +151,48 @@
     <Calculation_working_mode>0</Calculation_working_mode>
     <Weight><Gross_weight/></Weight>
     <Total_cost>0.0</Total_cost>
-    <Total_CIF>{{ '%.2f'|format((summary.total_value * 115) / 100) }}</Total_CIF>
+    <Total_CIF>0</Total_CIF>
     <Gs_Invoice>
-      <Amount_national_currency>{{ '%.2f'|format(summary.total_value) }}</Amount_national_currency>
+      <Amount_national_currency>0</Amount_national_currency>
       <Currency_code>USD</Currency_code>
       <Currency_name>Daşary ýurt puly ýok</Currency_name>
-      <Currency_rate>1.0000</Currency_rate>
+      <Currency_rate>3.5</Currency_rate>
     </Gs_Invoice>
-    <Gs_external_freight><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_external_freight>
-    <Gs_internal_freight><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_internal_freight>
-    <Gs_insurance><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_insurance>
-    <Gs_other_cost><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_other_cost>
-    <Gs_deduction><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_deduction>
+    <Gs_external_freight>
+      <Amount_national_currency>0.0</Amount_national_currency>
+      <Amount_foreign_currency>0.0</Amount_foreign_currency>
+      <Currency_code>USD</Currency_code>
+      <Currency_name>Daşary ýurt puly ýok</Currency_name>
+      <Currency_rate>3.5</Currency_rate>
+    </Gs_external_freight>
+    <Gs_internal_freight>
+      <Amount_national_currency>0.0</Amount_national_currency>
+      <Amount_foreign_currency>0.0</Amount_foreign_currency>
+      <Currency_code>USD</Currency_code>
+      <Currency_name>Daşary ýurt puly ýok</Currency_name>
+      <Currency_rate>3.5</Currency_rate>
+    </Gs_internal_freight>
+    <Gs_insurance>
+      <Amount_national_currency>0.0</Amount_national_currency>
+      <Amount_foreign_currency>0.0</Amount_foreign_currency>
+      <Currency_code>USD</Currency_code>
+      <Currency_name>Daşary ýurt puly ýok</Currency_name>
+      <Currency_rate>3.5</Currency_rate>
+    </Gs_insurance>
+    <Gs_other_cost>
+      <Amount_national_currency>0.0</Amount_national_currency>
+      <Amount_foreign_currency>0.0</Amount_foreign_currency>
+      <Currency_code>USD</Currency_code>
+      <Currency_name>Daşary ýurt puly ýok</Currency_name>
+      <Currency_rate>3.5</Currency_rate>
+    </Gs_other_cost>
+    <Gs_deduction>
+      <Amount_national_currency>0.0</Amount_national_currency>
+      <Amount_foreign_currency>0.0</Amount_foreign_currency>
+      <Currency_code>USD</Currency_code>
+      <Currency_name>Daşary ýurt puly ýok</Currency_name>
+      <Currency_rate>3.5</Currency_rate>
+    </Gs_deduction>
     <Total><Total_invoice>{{ '%.2f'|format(summary.total_value) }}</Total_invoice><Total_weight>{{ '%.3f'|format(summary.total_quantity) }}</Total_weight></Total>
   </Valuation>
 
@@ -198,18 +228,12 @@
   {% set total_cif_itm = (val * 115 / 100) if val else 0 %}
   {% set alpha = (val / summary.total_value) if summary.total_value else 0 %}
   <Item>
-    <!-- Attached documents placeholder -->
-    <Attached_documents>
-      <Attached_document_code>04011</Attached_document_code>
-      <Attached_document_name>Invoice</Attached_document_name>
-      <Attached_document_reference>{{ declaration.reference }}</Attached_document_reference>
-      <Attached_document_date>{{ generation.timestamp.strftime('%m/%d/%y') }}</Attached_document_date>
-    </Attached_documents>
-
-    <!-- Packages mapping: Количество мест, Часть мест, Вид упаковки -->
+<!-- Packages mapping: Количество мест, Часть мест, Вид упаковки -->
     <Packages>
       <Number_of_packages>{{ packages }}</Number_of_packages>
-      <Part_of_packages>{{ packages_part }}</Part_of_packages>
+      <Partial_packages>{{ packages_part }}</Partial_packages>
+      <Marks1_of_packages>{{ product.product_description|e|truncate(512, True) }}</Marks1_of_packages>
+      <Marks2_of_packages><null/></Marks2_of_packages>
       <Kind_of_packages_code>{{ pack_code }}</Kind_of_packages_code>
       <Kind_of_packages_name>{{ pack_name }}</Kind_of_packages_name>
     </Packages>
@@ -219,38 +243,55 @@
       <HScode>
         <Commodity_code>{{ product.matched_hs_code }}</Commodity_code>
         <Precision_1>000</Precision_1>
-        <Precision_2>0</Precision_2>
+        <Precision_2><null/></Precision_2>
         <Precision_3><null/></Precision_3>
         <Precision_4><null/></Precision_4>
       </HScode>
-      <Preference_code_PRFReg>{{ pref_reg }}</Preference_code_PRFReg>
-      <Preference_code_PRFDut>{{ pref_dut }}</Preference_code_PRFDut>
-      <Preference_code_PRFExc>{{ pref_exc }}</Preference_code_PRFExc>
-      <Extended_customs_procedure>{{ ext_proc }}</Extended_customs_procedure>
-      <National_customs_procedure>{{ nat_proc }}</National_customs_procedure>
-      <Valuation_method_code>1</Valuation_method_code>
-      <Value_item>0,00+0,00+0,00+0,00-0,00</Value_item>
-      <A.I._code>{{ bku }}</A.I._code>
-      <uom_code>{{ uom_code }}</uom_code>
-      <uom_name>{{ uom_name }}</uom_name>
-      <uom_quantity>{{ '%.3f'|format(qty) }}</uom_quantity>
-      <uom_price>{{ '%.2f'|format(unit_price) }}</uom_price>
+      <Preference_code_PRFReg>00</Preference_code_PRFReg>
+      <Preference_code_PRFDut>00</Preference_code_PRFDut>
+      <Preference_code_PRFExc>00</Preference_code_PRFExc>
+      <Extended_customs_procedure>4000</Extended_customs_procedure>
+      <National_customs_procedure>000</National_customs_procedure>      
+      <Quota_code>
+        <null/>
+      </Quota_code>
+      <Quota>
+        <QuotaCode>
+          <null/>
+        </QuotaCode>
+        <QuotaId>
+          <null/>
+        </QuotaId>
+        <QuotaItem>
+          <ItmNbr>
+            <null/>
+          </ItmNbr>
+        </QuotaItem>
+      </Quota>      
       <Supplementary_unit>
         <Suppplementary_unit_quantity>{{ sup_qty }}</Suppplementary_unit_quantity>
         <Suppplementary_unit_code>{{ sup_code }}</Suppplementary_unit_code>
         <Suppplementary_unit_name>{{ sup_name }}</Suppplementary_unit_name>
       </Supplementary_unit>
-      <write_off_unit>
-        <write_off_unit_code><null/></write_off_unit_code>
-        <write_off_unit_qty/>
-      </write_off_unit>
+      <Valuation_method_code>1</Valuation_method_code>
+      <Value_item>0,00+0,00+0,00+0,00-0,00</Value_item>
+      <Attached_doc_item><null/></Attached_doc_item>
+      <A.I._code>{{ bku }}</A.I._code>
+      <uom_code>{{ uom_code }}</uom_code>
+      <uom_name>{{ uom_name }}</uom_name>
+      <uom_quantity>{{ '%.3f'|format(qty) }}</uom_quantity>
+      <uom_price>{{ '%.2f'|format(unit_price) }}</uom_price>      
     </Tarification>
+    <write_off_unit>
+      <write_off_unit_code><null/></write_off_unit_code>
+      <write_off_unit_qty/>
+    </write_off_unit>
 
     <!-- Goods description mapping: Наименование товара, Страна происхождения -->
     <Goods_description>
       <Country_of_origin_code>{{ origin_code }}</Country_of_origin_code>
-      <Country_of_origin_region><null/></Country_of_origin_region>
-      <Description_of_goods>{{ product.product_description|e|truncate(512, True) }}</Description_of_goods>
+      <Country_of_origin_region/>
+      <Description_of_goods></Description_of_goods>
       <Commercial_Description><null/></Commercial_Description>
       <Goods_Serial><null/></Goods_Serial>
     </Goods_description>
@@ -266,22 +307,26 @@
     <Licence_number><null/></Licence_number>
     <Amount_deducted_from_licence/>
     <Quantity_deducted_from_licence/>
-    <Free_text_1/>
-    <Free_text_2><null/></Free_text_2>
+    <Free_text_1>
+      <null/>
+    </Free_text_1>
+    <Free_text_2>
+      <null/>
+    </Free_text_2>
 
     <!-- Taxation: basic placeholder mapping (no real duty calc) -->
     <Taxation>
-      <Item_taxes_amount>{{ '%.2f'|format(0) }}</Item_taxes_amount>
+      <Item_taxes_amount>
       <Item_taxes_guaranted_amount/>
-      <Item_taxes_mode_of_payment>1</Item_taxes_mode_of_payment>
+      <Item_taxes_mode_of_payment><null/></Item_taxes_mode_of_payment>
       <Counter_of_normal_mode_of_payment/>
       <Displayed_item_taxes_amount/>
       <Taxation_line>
-        <Duty_tax_code>10</Duty_tax_code>
-        <Duty_tax_Base>{{ '%.2f'|format(val) }}</Duty_tax_Base>
-        <Duty_tax_rate>0.0</Duty_tax_rate>
-        <Duty_tax_amount>0.00</Duty_tax_amount>
-        <Duty_tax_MP>1</Duty_tax_MP>
+        <Duty_tax_code><null/></Duty_tax_code>
+        <Duty_tax_Base/>
+        <Duty_tax_rate/>
+        <Duty_tax_amount/>
+        <Duty_tax_MP><null/></Duty_tax_MP>
         <Duty_tax_Type_of_calculation><null/></Duty_tax_Type_of_calculation>
       </Taxation_line>
       {% for _ in range(5) %}
@@ -299,22 +344,52 @@
         <Net_weight_itm>{{ '%.3f'|format(net_w) }}</Net_weight_itm>
       </Weight_itm>
       <Total_cost_itm>0.0</Total_cost_itm>
-      <Total_CIF_itm>{{ '%.2f'|format(total_cif_itm) }}</Total_CIF_itm>
+      <Total_CIF_itm>0.0</Total_CIF_itm>
       <Rate_of_adjustement>1.0</Rate_of_adjustement>
-      <Statistical_value>{{ '%.2f'|format(val) }}</Statistical_value>
-      <Alpha_coeficient_of_apportionment>{{ '%.12f'|format(alpha) }}</Alpha_coeficient_of_apportionment>
+      <Statistical_value>0.0</Statistical_value>
+      <Alpha_coeficient_of_apportionment>0.0</Alpha_coeficient_of_apportionment>
       <Item_Invoice>
-        <Amount_national_currency>{{ '%.2f'|format(val) }}</Amount_national_currency>
+        <Amount_national_currency>{{ '%.2f'|format(val) * 3.5 }}</Amount_national_currency>
         <Amount_foreign_currency>{{ '%.2f'|format(val) }}</Amount_foreign_currency>
         <Currency_code>USD</Currency_code>
         <Currency_name>Daşary ýurt puly ýok</Currency_name>
-        <Currency_rate>1.0000</Currency_rate>
+        <Currency_rate>3.5</Currency_rate>
       </Item_Invoice>
-      <item_external_freight><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_external_freight>
-      <item_internal_freight><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_internal_freight>
-      <item_insurance><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_insurance>
-      <item_other_cost><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_other_cost>
-      <item_deduction><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_deduction>
+      <item_external_freight>
+        <Amount_national_currency>0.0</Amount_national_currency>
+        <Amount_foreign_currency>0.0</Amount_foreign_currency>
+        <Currency_code>USD</Currency_code>
+        <Currency_name>Daşary ýurt puly ýok</Currency_name>
+        <Currency_rate>3.5</Currency_rate>
+      </item_external_freight>
+      <item_internal_freight>
+        <Amount_national_currency>0.0</Amount_national_currency>
+        <Amount_foreign_currency>0.0</Amount_foreign_currency>
+        <Currency_code>USD</Currency_code>
+        <Currency_name>Daşary ýurt puly ýok</Currency_name>
+        <Currency_rate>3.5</Currency_rate>
+      </item_internal_freight>
+      <item_insurance>
+        <Amount_national_currency>0.0</Amount_national_currency>
+        <Amount_foreign_currency>0.0</Amount_foreign_currency>
+        <Currency_code>USD</Currency_code>
+        <Currency_name>Daşary ýurt puly ýok</Currency_name>
+        <Currency_rate>3.5</Currency_rate>
+      </item_insurance>
+      <item_other_cost>
+        <Amount_national_currency>0.0</Amount_national_currency>
+        <Amount_foreign_currency>0.0</Amount_foreign_currency>
+        <Currency_code>USD</Currency_code>
+        <Currency_name>Daşary ýurt puly ýok</Currency_name>
+        <Currency_rate>3.5</Currency_rate>
+      </item_other_cost>
+      <item_deduction>
+        <Amount_national_currency>0.0</Amount_national_currency>
+        <Amount_foreign_currency>0.0</Amount_foreign_currency>
+        <Currency_code>USD</Currency_code>
+        <Currency_name>Daşary ýurt puly ýok</Currency_name>
+        <Currency_rate>3.5</Currency_rate>
+      </item_deduction>
     </Valuation_item>
   </Item>
   {% endfor %}

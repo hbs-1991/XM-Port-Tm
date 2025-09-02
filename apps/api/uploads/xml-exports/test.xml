@@ -165,6 +165,8 @@
     <Packages>
       <Number_of_packages>1</Number_of_packages>
       <Part_of_packages></Part_of_packages>
+      <Marks1_of_packages>PROKLADKA - rezin (galyň, tegelek görnüşli)</Marks1_of_packages>
+      <Marks2_of_packages></Marks2_of_packages>
       <Kind_of_packages_code>CTN</Kind_of_packages_code>
       <Kind_of_packages_name>Carton</Kind_of_packages_name>
     </Packages>
@@ -203,7 +205,7 @@
     <Goods_description>
       <Country_of_origin_code>BE</Country_of_origin_code>
       <Country_of_origin_region><null/></Country_of_origin_region>
-      <Description_of_goods>PROKLADKA - rezin (galyň, tegelek görnüşli)</Description_of_goods>
+      <Description_of_goods></Description_of_goods>
       <Commercial_Description><null/></Commercial_Description>
       <Goods_Serial><null/></Goods_Serial>
     </Goods_description>
