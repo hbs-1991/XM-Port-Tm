@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = ""
     ENABLE_SWAGGER: bool = True
     ENABLE_METRICS: bool = True
+
+    # XML generation format selection
+    # Options: DECLARATION, ASYCUDA (default)
+    XML_OUTPUT_FORMAT: str = "ASYCUDA"
     
     @field_validator("SECRET_KEY")
     def validate_secret_key(cls, v):
@@ -100,6 +104,14 @@ class Settings(BaseSettings):
         if isinstance(self.CORS_ORIGINS, str):
             return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
         return self.CORS_ORIGINS
+
+    @property
+    def xml_output_format(self) -> str:
+        """Normalized XML output format value"""
+        val = (self.XML_OUTPUT_FORMAT or "ASYCUDA").strip().upper()
+        if val not in ["DECLARATION", "ASYCUDA"]:
+            return "ASYCUDA"
+        return val
     
     @property
     def upload_extensions_list(self) -> List[str]:

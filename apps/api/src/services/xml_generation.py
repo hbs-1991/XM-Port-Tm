@@ -106,7 +106,8 @@ class XMLGenerationService:
             )
         )
         
-        # Country schema configurations
+        # Country schema base configurations
+        # Note: Actual template is selected dynamically based on XML_OUTPUT_FORMAT
         self._country_configs = {
             CountrySchema.TURKMENISTAN: XMLGenerationConfig(
                 country_schema=CountrySchema.TURKMENISTAN,
@@ -213,8 +214,31 @@ class XMLGenerationService:
             raise XMLGenerationError(f"XML generation failed: {str(e)}")
     
     def _get_country_config(self, country_schema: CountrySchema) -> Optional[XMLGenerationConfig]:
-        """Get configuration for specific country schema"""
-        return self._country_configs.get(country_schema)
+        """Get configuration for specific country schema.
+
+        Dynamically selects the correct template based on XML_OUTPUT_FORMAT
+        (ASYCUDA vs DECLARATION) while keeping other config fields.
+        """
+        base = self._country_configs.get(country_schema)
+        if not base:
+            return None
+
+        # Pick template according to configured output format
+        output_format = self.settings.xml_output_format  # normalized to upper-case
+        if output_format == "ASYCUDA":
+            template_name = "asycuda_turkmenistan.xml.j2"
+        else:
+            # Default/legacy declaration format
+            template_name = "declaration_turkmenistan.xml.j2"
+
+        # Return a shallow copy with the selected template
+        return XMLGenerationConfig(
+            country_schema=base.country_schema,
+            template_name=template_name,
+            encoding=base.encoding,
+            validate_output=base.validate_output,
+            include_metadata=base.include_metadata,
+        )
     
     def _prepare_template_context(
         self, 
@@ -354,11 +378,12 @@ class XMLGenerationService:
                 validation_errors.append(f"XML parsing error: {str(e)}")
                 return validation_errors
             
-            # Check for required elements based on country schema
+            # Check for required elements based on selected output format
             if country_schema == CountrySchema.TURKMENISTAN:
-                validation_errors.extend(
-                    self._validate_declaration_structure(xml_content)
-                )
+                if self.settings.xml_output_format == "ASYCUDA":
+                    validation_errors.extend(self._validate_asycuda_structure(xml_content))
+                else:
+                    validation_errors.extend(self._validate_declaration_structure(xml_content))
             
             # Additional validations can be added here
             # For example, XSD schema validation with xsdata
@@ -415,6 +440,98 @@ class XMLGenerationService:
         # Validate structure and business rules
         self._validate_declaration_business_rules(xml_content, errors)
         
+        return errors
+
+    def _validate_asycuda_structure(self, xml_content: str) -> List[str]:
+        """Validate ASYCUDA structure for generated XML.
+
+        Minimal checks against Turkmenistan ASYCUDA example:
+        - Root element <ASYCUDA>
+        - At least one <Item>
+        - For each item ensure presence of mapped fields
+        """
+        errors: List[str] = []
+        try:
+            from xml.etree import ElementTree as ET
+            root = ET.fromstring(xml_content.encode('utf-8'))
+
+            def local(tag: str) -> str:
+                return tag.split('}', 1)[1] if tag.startswith('{') else tag
+
+            if local(root.tag) != 'ASYCUDA':
+                errors.append("Missing root element: <ASYCUDA>")
+                return errors
+
+            items = [el for el in root.iter() if local(el.tag) == 'Item']
+            if not items:
+                errors.append("Missing required element: Item")
+                return errors
+
+            for i, item in enumerate(items, 1):
+                prefix = f"Item {i}: "
+                gd = next((c for c in list(item) if local(c.tag) == 'Goods_description'), None)
+                if gd is None:
+                    errors.append(prefix + "Missing Goods_description")
+                else:
+                    desc = next((c for c in list(gd) if local(c.tag) == 'Description_of_goods'), None)
+                    origin = next((c for c in list(gd) if local(c.tag) == 'Country_of_origin_code'), None)
+                    if desc is None or (desc.text or '').strip() == '':
+                        errors.append(prefix + "Description_of_goods is required")
+                    if origin is None or len((origin.text or '').strip()) != 2:
+                        errors.append(prefix + "Country_of_origin_code must be 2 letters")
+
+                pk = next((c for c in list(item) if local(c.tag) == 'Packages'), None)
+                if pk is None:
+                    errors.append(prefix + "Missing Packages")
+                else:
+                    nop = next((c for c in list(pk) if local(c.tag) == 'Number_of_packages'), None)
+                    if nop is None or (nop.text or '').strip() == '':
+                        errors.append(prefix + "Number_of_packages is required")
+
+                tf = next((c for c in list(item) if local(c.tag) == 'Tarification'), None)
+                if tf is None:
+                    errors.append(prefix + "Missing Tarification")
+                else:
+                    hs = next((c for c in list(tf) if local(c.tag) == 'HScode'), None)
+                    uqty = next((c for c in list(tf) if local(c.tag) == 'uom_quantity'), None)
+                    ucode = next((c for c in list(tf) if local(c.tag) == 'uom_code'), None)
+                    upr = next((c for c in list(tf) if local(c.tag) == 'uom_price'), None)
+                    if hs is None:
+                        errors.append(prefix + "Missing HScode")
+                    else:
+                        cc = next((c for c in list(hs) if local(c.tag) == 'Commodity_code'), None)
+                        if cc is None or not (cc.text or '').strip().isdigit():
+                            errors.append(prefix + "HScode/Commodity_code must be digits")
+                    try:
+                        if uqty is None or float((uqty.text or '0').strip() or '0') <= 0:
+                            errors.append(prefix + "uom_quantity must be positive")
+                    except ValueError:
+                        errors.append(prefix + "uom_quantity must be a number")
+                    if ucode is None or (ucode.text or '').strip() == '':
+                        errors.append(prefix + "uom_code is required")
+                    if upr is None or (upr.text is None):
+                        errors.append(prefix + "uom_price is required")
+
+                vi = next((c for c in list(item) if local(c.tag) == 'Valuation_item'), None)
+                if vi is None:
+                    errors.append(prefix + "Missing Valuation_item")
+                else:
+                    w = next((c for c in list(vi) if local(c.tag) == 'Weight_itm'), None)
+                    if w is None:
+                        errors.append(prefix + "Missing Weight_itm")
+                    else:
+                        net = next((c for c in list(w) if local(c.tag) == 'Net_weight_itm'), None)
+                        gross = next((c for c in list(w) if local(c.tag) == 'Gross_weight_itm'), None)
+                        if net is None or (net.text is None):
+                            errors.append(prefix + "Net_weight_itm is required")
+                        if gross is None or (gross.text is None):
+                            errors.append(prefix + "Gross_weight_itm is required")
+
+        except ET.ParseError as e:
+            errors.append(f"XML parsing error in ASYCUDA validation: {str(e)}")
+        except Exception as e:
+            errors.append(f"ASYCUDA validation error: {str(e)}")
+
         return errors
     
     def _validate_declaration_business_rules(self, xml_content: str, errors: List[str]) -> None:

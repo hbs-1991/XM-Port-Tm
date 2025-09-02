@@ -1,0 +1,1253 @@
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="ASYCUDA">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="Export_release">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element type="xs:string" name="Date_of_exit"/>
+              <xs:element type="xs:string" name="Time_of_exit"/>
+              <xs:element name="Actual_office_of_exit_code">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Actual_office_of_exit_name">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Exit_reference">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Comments">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Assessment_notice">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element type="xs:string" name="Item_tax_total" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Global_taxes">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element type="xs:string" name="Global_tax_item" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Property">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element type="xs:string" name="Sad_flow"/>
+              <xs:element name="Forms">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:byte" name="Number_of_the_form"/>
+                    <xs:element type="xs:byte" name="Total_number_of_forms"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Nbers">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Number_of_loading_lists"/>
+                    <xs:element type="xs:byte" name="Total_number_of_items"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Place_of_declaration">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="Date_of_declaration"/>
+              <xs:element type="xs:byte" name="Selected_page"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Identification">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Office_segment">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:short" name="Customs_clearance_office_code"/>
+                    <xs:element type="xs:string" name="Customs_Clearance_office_name"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Type">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Type_of_declaration"/>
+                    <xs:element type="xs:byte" name="Declaration_gen_procedure_code"/>
+                    <xs:element type="xs:string" name="Type_of_transit_document"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Manifest_reference_number">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Registration">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Serial_number">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Number"/>
+                    <xs:element type="xs:string" name="Date"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Assessment">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Serial_number">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Number"/>
+                    <xs:element type="xs:string" name="Date"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="receipt">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Serial_number">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Number"/>
+                    <xs:element type="xs:string" name="Date"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Traders">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Exporter">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:long" name="Exporter_code"/>
+                    <xs:element type="xs:string" name="Exporter_name"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Consignee">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Consignee_code"/>
+                    <xs:element type="xs:string" name="Consignee_name"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Financial">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:long" name="Financial_code"/>
+                    <xs:element type="xs:string" name="Financial_name"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Declarant">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element type="xs:long" name="Declarant_code"/>
+              <xs:element type="xs:string" name="Declarant_name"/>
+              <xs:element name="Reference">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Number"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="General_information">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Country">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Country_first_destination"/>
+                    <xs:element type="xs:string" name="Trading_country"/>
+                    <xs:element name="Export">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Export_country_code"/>
+                          <xs:element type="xs:string" name="Export_country_name"/>
+                          <xs:element type="xs:string" name="Export_country_region"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Destination">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Destination_country_code"/>
+                          <xs:element type="xs:string" name="Destination_country_name"/>
+                          <xs:element type="xs:string" name="Destination_country_region"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Country_of_origin_name"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:float" name="Value_details"/>
+              <xs:element name="Additional_information">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Comments_free_text">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Transport">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Means_of_transport">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Departure_arrival_information">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Identity"/>
+                          <xs:element type="xs:string" name="Nationality"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Border_information">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Identity"/>
+                          <xs:element type="xs:string" name="Nationality"/>
+                          <xs:element type="xs:byte" name="Mode"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:byte" name="Inland_mode_of_transport"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="Container_flag"/>
+              <xs:element name="Delivery_terms">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Code"/>
+                    <xs:element type="xs:string" name="Place"/>
+                    <xs:element type="xs:string" name="Situation"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Border_office">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:short" name="Code"/>
+                    <xs:element type="xs:string" name="Name"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Place_of_loading">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Code">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Name">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Country"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="Location_of_goods"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Financial">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Financial_transaction">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:byte" name="code1"/>
+                    <xs:element type="xs:byte" name="code2"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Bank">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Code">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Name">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Branch"/>
+                    <xs:element type="xs:string" name="Reference"/>
+                    <xs:element name="Transaction">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Date"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Terms">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Code">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Description">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="Total_invoice"/>
+              <xs:element name="Deffered_payment_reference">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="Mode_of_payment"/>
+              <xs:element name="Amounts">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Total_manual_taxes"/>
+                    <xs:element type="xs:float" name="Global_taxes"/>
+                    <xs:element type="xs:float" name="Totals_taxes"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Guarantee">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Name">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:float" name="Amount"/>
+                    <xs:element type="xs:string" name="Date"/>
+                    <xs:element name="Excluded_country">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="Code">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Name">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Warehouse">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Identification">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="Delay"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Transit">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Principal">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Code">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Name">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Representative">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Signature">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Place">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Date"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Destination">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Office">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Country">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Seals">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Number"/>
+                    <xs:element name="Identity">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="Result_of_control"/>
+              <xs:element type="xs:string" name="Time_limit"/>
+              <xs:element name="Officer_name">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Valuation">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element type="xs:byte" name="Calculation_working_mode"/>
+              <xs:element name="Weight">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Gross_weight"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:float" name="Total_cost"/>
+              <xs:element type="xs:float" name="Total_CIF"/>
+              <xs:element name="Gs_Invoice">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:float" name="Amount_national_currency"/>
+                    <xs:element type="xs:string" name="Currency_code"/>
+                    <xs:element type="xs:string" name="Currency_name"/>
+                    <xs:element type="xs:float" name="Currency_rate"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Gs_external_freight">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:float" name="Amount_national_currency"/>
+                    <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                    <xs:element type="xs:string" name="Currency_code"/>
+                    <xs:element type="xs:string" name="Currency_name"/>
+                    <xs:element type="xs:byte" name="Currency_rate"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Gs_internal_freight">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:float" name="Amount_national_currency"/>
+                    <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                    <xs:element type="xs:string" name="Currency_code"/>
+                    <xs:element type="xs:string" name="Currency_name"/>
+                    <xs:element type="xs:byte" name="Currency_rate"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Gs_insurance">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:float" name="Amount_national_currency"/>
+                    <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                    <xs:element type="xs:string" name="Currency_code"/>
+                    <xs:element type="xs:string" name="Currency_name"/>
+                    <xs:element type="xs:byte" name="Currency_rate"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Gs_other_cost">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:float" name="Amount_national_currency"/>
+                    <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                    <xs:element type="xs:string" name="Currency_code"/>
+                    <xs:element type="xs:string" name="Currency_name"/>
+                    <xs:element type="xs:byte" name="Currency_rate"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Gs_deduction">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:float" name="Amount_national_currency"/>
+                    <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                    <xs:element type="xs:string" name="Currency_code"/>
+                    <xs:element type="xs:string" name="Currency_name"/>
+                    <xs:element type="xs:byte" name="Currency_rate"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Total">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:float" name="Total_invoice"/>
+                    <xs:element type="xs:float" name="Total_weight"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="Item" maxOccurs="unbounded" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Attached_documents" maxOccurs="unbounded" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:short" name="Attached_document_code"/>
+                    <xs:element type="xs:string" name="Attached_document_name"/>
+                    <xs:element type="xs:string" name="Attached_document_reference"/>
+                    <xs:element type="xs:string" name="Attached_document_date" minOccurs="0"/>
+                    <xs:element type="xs:string" name="All_Item"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Packages">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Number_of_packages"/>
+                    <xs:element type="xs:string" name="Partial_packages"/>
+                    <xs:element name="Marks1_of_packages">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Marks2_of_packages">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Kind_of_packages_code">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Kind_of_packages_name">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="IncoTerms">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Code">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Place">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Tarification">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Supplementary_unit" maxOccurs="unbounded" minOccurs="0">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Suppplementary_unit_quantity"/>
+                          <xs:element name="Suppplementary_unit_code">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Suppplementary_unit_name">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Tarification_data">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="HScode">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="Commodity_code">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Precision_1">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Precision_2">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Precision_3">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Precision_4">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:byte" name="Preference_code_PRFReg"/>
+                    <xs:element type="xs:byte" name="Preference_code_PRFDut"/>
+                    <xs:element type="xs:byte" name="Preference_code_PRFExc"/>
+                    <xs:element name="Extended_customs_procedure">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="National_customs_procedure">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Quota_code">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Quota">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="QuotaCode">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="QuotaId">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="QuotaItem">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="ItmNbr">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element type="xs:string" name="null"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Valuation_method_code"/>
+                    <xs:element name="Value_item">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Attached_doc_item">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="A.I._code">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="uom_code">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="uom_name">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="uom_quantity"/>
+                    <xs:element type="xs:string" name="uom_price"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="write_off_unit">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="write_off_unit_code">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="write_off_unit_qty"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Goods_description">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Country_of_origin_code">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Country_of_origin_region"/>
+                    <xs:element name="Description_of_goods">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Commercial_Description">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Goods_Serial">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Previous_doc">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Summary_declaration">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Summary_declaration_sl">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Previous_document_reference">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Previous_warehouse_code">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Licence_number">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="Amount_deducted_from_licence"/>
+              <xs:element type="xs:string" name="Quantity_deducted_from_licence"/>
+              <xs:element name="Free_text_1">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Free_text_2">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Taxation">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="Item_taxes_amount"/>
+                    <xs:element type="xs:string" name="Item_taxes_guaranted_amount"/>
+                    <xs:element name="Item_taxes_mode_of_payment">
+                      <xs:complexType mixed="true">
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="null" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Counter_of_normal_mode_of_payment"/>
+                    <xs:element type="xs:string" name="Displayed_item_taxes_amount"/>
+                    <xs:element name="Taxation_line" maxOccurs="unbounded" minOccurs="0">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="Duty_tax_code">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="Duty_tax_Base"/>
+                          <xs:element type="xs:string" name="Duty_tax_rate"/>
+                          <xs:element type="xs:string" name="Duty_tax_amount"/>
+                          <xs:element name="Duty_tax_MP">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Duty_tax_Type_of_calculation">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Valuation_item">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="Weight_itm">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Gross_weight_itm"/>
+                          <xs:element type="xs:string" name="Net_weight_itm"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element type="xs:string" name="Total_cost_itm"/>
+                    <xs:element type="xs:string" name="Total_CIF_itm"/>
+                    <xs:element type="xs:string" name="Rate_of_adjustement"/>
+                    <xs:element type="xs:string" name="Statistical_value"/>
+                    <xs:element type="xs:string" name="Alpha_coeficient_of_apportionment"/>
+                    <xs:element name="Item_Invoice">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Amount_national_currency"/>
+                          <xs:element type="xs:string" name="Amount_foreign_currency"/>
+                          <xs:element name="Currency_code">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Currency_name">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="Currency_rate"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="item_external_freight">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Amount_national_currency"/>
+                          <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                          <xs:element name="Currency_code">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="Currency_name"/>
+                          <xs:element type="xs:string" name="Currency_rate"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="item_internal_freight">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Amount_national_currency"/>
+                          <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                          <xs:element name="Currency_code">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Currency_name">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="Currency_rate"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="item_insurance">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Amount_national_currency"/>
+                          <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                          <xs:element name="Currency_code">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="Currency_name"/>
+                          <xs:element type="xs:string" name="Currency_rate"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="item_other_cost">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Amount_national_currency"/>
+                          <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                          <xs:element name="Currency_code">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="Currency_name"/>
+                          <xs:element type="xs:string" name="Currency_rate"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="item_deduction">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Amount_national_currency"/>
+                          <xs:element type="xs:float" name="Amount_foreign_currency"/>
+                          <xs:element name="Currency_code">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="Currency_name">
+                            <xs:complexType mixed="true">
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="Currency_rate"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="Market_valuer">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="xs:string" name="Rate"/>
+                          <xs:element name="Currency_code">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="Currency_amount"/>
+                          <xs:element name="Basis_description">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element type="xs:string" name="null"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element type="xs:string" name="Basis_amount"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="TRANSPORT">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element type="xs:byte" name="Tpt_Item"/>
+              <xs:element type="xs:string" name="Tpt_Box"/>
+              <xs:element name="Tpt_Cmr">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:string" name="Tpt_Cmd_Dat"/>
+              <xs:element type="xs:byte" name="Tpt_Typ"/>
+              <xs:element type="xs:string" name="Tpt_Cty"/>
+              <xs:element type="xs:string" name="Tpt_Plt"/>
+              <xs:element name="Tpt_Ctn">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:short" name="Tpt_Cuo"/>
+              <xs:element type="xs:string" name="Tpt_Reg_Dat"/>
+              <xs:element name="Tpt_Reg_Nbr">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Tpt_Tir">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element type="xs:short" name="Tpt_Brd_Cuo"/>
+              <xs:element name="Tpt_Seal">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Tpt_Prv">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element type="xs:string" name="null"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

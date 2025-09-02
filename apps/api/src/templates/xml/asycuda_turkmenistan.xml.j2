@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ASYCUDA>
+  <!-- Export/Release Section -->
+  <Export_release>
+    <Date_of_exit/>
+    <Time_of_exit/>
+    <Actual_office_of_exit_code><null/></Actual_office_of_exit_code>
+    <Actual_office_of_exit_name><null/></Actual_office_of_exit_name>
+    <Exit_reference><null/></Exit_reference>
+    <Comments><null/></Comments>
+  </Export_release>
+
+  <!-- Assessment notice (placeholder repeated lines) -->
+  <Assessment_notice>
+    {% for _ in range(14) %}<Item_tax_total/>{% endfor %}
+  </Assessment_notice>
+
+  <!-- Global taxes (placeholder) -->
+  <Global_taxes>
+    {% for _ in range(8) %}<Global_tax_item/>{% endfor %}
+  </Global_taxes>
+
+  <!-- Property / declaration meta -->
+  <Property>
+    <Sad_flow>I</Sad_flow>
+    <Forms>
+      <Number_of_the_form>1</Number_of_the_form>
+      <Total_number_of_forms>{{ (product_count // 3) + 1 }}</Total_number_of_forms>
+    </Forms>
+    <Nbers>
+      <Number_of_loading_lists/>
+      <Total_number_of_items>{{ product_count }}</Total_number_of_items>
+    </Nbers>
+    <Place_of_declaration><null/></Place_of_declaration>
+    <Date_of_declaration/>
+    <Selected_page>1</Selected_page>
+  </Property>
+
+  <!-- Identification -->
+  <Identification>
+    <Office_segment>
+      <Customs_clearance_office_code>07217</Customs_clearance_office_code>
+      <Customs_Clearance_office_name>«Köpetdag» gümrük nokady</Customs_Clearance_office_name>
+    </Office_segment>
+    <Type>
+      <Type_of_declaration>IM</Type_of_declaration>
+      <Declaration_gen_procedure_code>40</Declaration_gen_procedure_code>
+      <Type_of_transit_document>ÝGD</Type_of_transit_document>
+    </Type>
+    <Manifest_reference_number><null/></Manifest_reference_number>
+    <Registration><Serial_number><null/></Serial_number><Number/><Date/></Registration>
+    <Assessment><Serial_number><null/></Serial_number><Number/><Date/></Assessment>
+    <receipt><Serial_number><null/></Serial_number><Number/><Date/></receipt>
+  </Identification>
+
+  <!-- Traders (placeholders; fill from job/user profile later) -->
+  <Traders>
+    <Exporter>
+      <Exporter_code/>
+      <Exporter_name>"ITS Investment &amp; Trading Services AG"</Exporter_name>
+    </Exporter>
+    <Consignee>
+      <Consignee_code>102211003002</Consignee_code>
+      <Consignee_name>"Iner Täjirçilik Söwdasy - Awto Hyzmat Merkezi" hojalyk jemgyýeti</Consignee_name>
+    </Consignee>
+    <Financial>
+      <Financial_code>102211003002</Financial_code>
+      <Financial_name>"Iner Täjirçilik Söwdasy - Awto Hyzmat Merkezi" hojalyk jemgyýeti</Financial_name>
+    </Financial>
+  </Traders>
+
+  <!-- Declarant -->
+  <Declarant>
+    <Declarant_code>102211002668</Declarant_code>
+    <Declarant_name>"Turan Merkez" hususy kärhanasy</Declarant_name>
+    <Reference><Number/></Reference>
+  </Declarant>
+
+  <!-- General information -->
+  <General_information>
+    <Country>
+      <Country_first_destination/>
+      <Trading_country>CH</Trading_country>
+      <Export>
+        <Export_country_code>CH</Export_country_code>
+        <Export_country_name>Şweýsariýa</Export_country_name>
+        <Export_country_region/>
+      </Export>
+      <Destination>
+        <Destination_country_code>TM</Destination_country_code>
+        <Destination_country_name>Türkmenistan</Destination_country_name>
+        <Destination_country_region/>
+      </Destination>
+      <Country_of_origin_name/>
+    </Country>
+    <Value_details>{{ '%.2f'|format(summary.total_value) }}</Value_details>
+    <Additional_information><null/></Additional_information>
+    <Comments_free_text><null/></Comments_free_text>
+  </General_information>
+
+  <!-- Transport (placeholders) -->
+  <Transport>
+    <Means_of_transport>
+      <Departure_arrival_information>
+        <Identity>1 BH2664AG/76AAS312/WOLWO</Identity>
+        <Nationality>TM</Nationality>
+      </Departure_arrival_information>
+      <Border_information>
+        <Identity>1 DAGISTAN</Identity>
+        <Nationality>AZ</Nationality>
+        <Mode>10</Mode>
+      </Border_information>
+      <Inland_mode_of_transport>30</Inland_mode_of_transport>
+    </Means_of_transport>
+    <Container_flag>false</Container_flag>
+    <Delivery_terms>
+      <Code>CIP</Code>
+      <Place>Aşgabat.ş</Place>
+      <Situation>TM</Situation>
+    </Delivery_terms>
+    <Border_office><Code>07317</Code><Name>«Parom geçelgesi» gümrük nokady</Name></Border_office>
+    <Place_of_loading><Code><null/></Code><Name><null/></Name><Country/></Place_of_loading>
+    <Location_of_goods>Alyjynyň ammary/07214</Location_of_goods>
+  </Transport>
+
+  <!-- Financial (placeholders) -->
+  <Financial>
+    <Financial_transaction><code1>1</code1><code2>0</code2></Financial_transaction>
+    <Bank><Code><null/></Code><Name><null/></Name><Branch/><Reference/><Transaction><null/></Transaction><Date/></Bank>
+    <Terms><Code><null/></Code><Description><null/></Description></Terms>
+    <Total_invoice/>
+    <Deffered_payment_reference><null/></Deffered_payment_reference>
+    <Mode_of_payment>NAGT HASAPLAŞYK</Mode_of_payment>
+    <Amounts><Total_manual_taxes/><Global_taxes>0.0</Global_taxes><Totals_taxes>0.0</Totals_taxes></Amounts>
+    <Guarantee><Name><null/></Name><Amount>0.0</Amount><Date/><Excluded_country><Code><null/></Code><Name><null/></Name></Excluded_country></Guarantee>
+  </Financial>
+
+  <Warehouse><Identification><null/></Identification><Delay/></Warehouse>
+  <Transit>
+    <Principal><Code><null/></Code><Name><null/></Name><Representative><null/></Representative></Principal>
+    <Signature><Place><null/></Place><Date/></Signature>
+    <Destination><Office><null/></Office><Country><null/></Country></Destination>
+    <Seals><Number/><Identity><null/></Identity></Seals>
+    <Result_of_control/>
+    <Time_limit/>
+    <Officer_name><null/></Officer_name>
+  </Transit>
+
+  <!-- Header valuation summary -->
+  <Valuation>
+    <Calculation_working_mode>0</Calculation_working_mode>
+    <Weight><Gross_weight/></Weight>
+    <Total_cost>0.0</Total_cost>
+    <Total_CIF>{{ '%.2f'|format((summary.total_value * 115) / 100) }}</Total_CIF>
+    <Gs_Invoice>
+      <Amount_national_currency>{{ '%.2f'|format(summary.total_value) }}</Amount_national_currency>
+      <Currency_code>USD</Currency_code>
+      <Currency_name>Daşary ýurt puly ýok</Currency_name>
+      <Currency_rate>1.0000</Currency_rate>
+    </Gs_Invoice>
+    <Gs_external_freight><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_external_freight>
+    <Gs_internal_freight><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_internal_freight>
+    <Gs_insurance><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_insurance>
+    <Gs_other_cost><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_other_cost>
+    <Gs_deduction><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></Gs_deduction>
+    <Total><Total_invoice>{{ '%.2f'|format(summary.total_value) }}</Total_invoice><Total_weight>{{ '%.3f'|format(summary.total_quantity) }}</Total_weight></Total>
+  </Valuation>
+
+  <!-- Items -->
+  {% for product in products %}
+  {% set country_map = {
+    'China': 'CN','Turkey': 'TR','USA': 'US','United States': 'US','Germany': 'DE','France': 'FR','Italy': 'IT','Japan': 'JP','South Korea': 'KR','United Kingdom': 'GB','Russia': 'RU'
+  } %}
+  {% set origin_code = country_map.get(product.origin_country, product.origin_country[:2]|upper if product.origin_country and product.origin_country|length >= 2 else 'XX') %}
+  {% set qty = product.quantity %}
+  {% set val = product.value if product.value else 0 %}
+  {% set unit = product.unit_of_measure if product.unit_of_measure else 'PCS' %}
+  {% set uom_code_map = {'PCS':'796','PCE':'796','KG':'166'} %}
+  {% set uom_name_map = {'PCS':'Sany','PCE':'Sany','KG':'Kilogram'} %}
+  {% set uom_code = uom_code_map.get(unit, '796') %}
+  {% set uom_name = uom_name_map.get(unit, unit) %}
+  {% set unit_price = (val / qty) if (val and qty) else 0 %}
+  {% set net_w = product.net_weight if product.net_weight is defined and product.net_weight else qty %}
+  {% set gross_w = product.gross_weight if product.gross_weight is defined and product.gross_weight else (qty * 11 / 10) %}
+  {% set packages = product.packages_count if product.packages_count is defined and product.packages_count else 1 %}
+  {% set packages_part = product.packages_part if product.packages_part is defined else '' %}
+  {% set pack_code = product.packaging_kind_code if product.packaging_kind_code is defined and product.packaging_kind_code else 'CTN' %}
+  {% set pack_name = product.packaging_kind_name if product.packaging_kind_name is defined and product.packaging_kind_name else 'Carton' %}
+  {% set pref_reg = product.preference_reg if product.preference_reg is defined and product.preference_reg else '00' %}
+  {% set pref_dut = product.preference_dut if product.preference_dut is defined and product.preference_dut else '00' %}
+  {% set pref_exc = product.preference_exc if product.preference_exc is defined and product.preference_exc else '00' %}
+  {% set ext_proc = product.extended_customs_procedure if product.extended_customs_procedure is defined and product.extended_customs_procedure else '4000' %}
+  {% set nat_proc = product.national_customs_procedure if product.national_customs_procedure is defined and product.national_customs_procedure else '000' %}
+  {% set sup_qty = product.supplementary_quantity if product.supplementary_quantity is defined else '' %}
+  {% set sup_code = product.supplementary_uom_code if product.supplementary_uom_code is defined else '' %}
+  {% set sup_name = product.supplementary_uom_name if product.supplementary_uom_name is defined else '' %}
+  {% set bku = product.bku if product.bku is defined else '' %}
+  {% set total_cif_itm = (val * 115 / 100) if val else 0 %}
+  {% set alpha = (val / summary.total_value) if summary.total_value else 0 %}
+  <Item>
+    <!-- Attached documents placeholder -->
+    <Attached_documents>
+      <Attached_document_code>04011</Attached_document_code>
+      <Attached_document_name>Invoice</Attached_document_name>
+      <Attached_document_reference>{{ declaration.reference }}</Attached_document_reference>
+      <Attached_document_date>{{ generation.timestamp.strftime('%m/%d/%y') }}</Attached_document_date>
+    </Attached_documents>
+
+    <!-- Packages mapping: Количество мест, Часть мест, Вид упаковки -->
+    <Packages>
+      <Number_of_packages>{{ packages }}</Number_of_packages>
+      <Part_of_packages>{{ packages_part }}</Part_of_packages>
+      <Kind_of_packages_code>{{ pack_code }}</Kind_of_packages_code>
+      <Kind_of_packages_name>{{ pack_name }}</Kind_of_packages_name>
+    </Packages>
+
+    <!-- Tarification block: Quantity, UOM, Price, Procedure, Preference, BKU -->
+    <Tarification>
+      <HScode>
+        <Commodity_code>{{ product.matched_hs_code }}</Commodity_code>
+        <Precision_1>000</Precision_1>
+        <Precision_2>0</Precision_2>
+        <Precision_3><null/></Precision_3>
+        <Precision_4><null/></Precision_4>
+      </HScode>
+      <Preference_code_PRFReg>{{ pref_reg }}</Preference_code_PRFReg>
+      <Preference_code_PRFDut>{{ pref_dut }}</Preference_code_PRFDut>
+      <Preference_code_PRFExc>{{ pref_exc }}</Preference_code_PRFExc>
+      <Extended_customs_procedure>{{ ext_proc }}</Extended_customs_procedure>
+      <National_customs_procedure>{{ nat_proc }}</National_customs_procedure>
+      <Valuation_method_code>1</Valuation_method_code>
+      <Value_item>0,00+0,00+0,00+0,00-0,00</Value_item>
+      <A.I._code>{{ bku }}</A.I._code>
+      <uom_code>{{ uom_code }}</uom_code>
+      <uom_name>{{ uom_name }}</uom_name>
+      <uom_quantity>{{ '%.3f'|format(qty) }}</uom_quantity>
+      <uom_price>{{ '%.2f'|format(unit_price) }}</uom_price>
+      <Supplementary_unit>
+        <Suppplementary_unit_quantity>{{ sup_qty }}</Suppplementary_unit_quantity>
+        <Suppplementary_unit_code>{{ sup_code }}</Suppplementary_unit_code>
+        <Suppplementary_unit_name>{{ sup_name }}</Suppplementary_unit_name>
+      </Supplementary_unit>
+      <write_off_unit>
+        <write_off_unit_code><null/></write_off_unit_code>
+        <write_off_unit_qty/>
+      </write_off_unit>
+    </Tarification>
+
+    <!-- Goods description mapping: Наименование товара, Страна происхождения -->
+    <Goods_description>
+      <Country_of_origin_code>{{ origin_code }}</Country_of_origin_code>
+      <Country_of_origin_region><null/></Country_of_origin_region>
+      <Description_of_goods>{{ product.product_description|e|truncate(512, True) }}</Description_of_goods>
+      <Commercial_Description><null/></Commercial_Description>
+      <Goods_Serial><null/></Goods_Serial>
+    </Goods_description>
+
+    <!-- Previous document placeholder -->
+    <Previous_doc>
+      <Summary_declaration/>
+      <Summary_declaration_sl><null/></Summary_declaration_sl>
+      <Previous_document_reference><null/></Previous_document_reference>
+      <Previous_warehouse_code><null/></Previous_warehouse_code>
+    </Previous_doc>
+
+    <Licence_number><null/></Licence_number>
+    <Amount_deducted_from_licence/>
+    <Quantity_deducted_from_licence/>
+    <Free_text_1/>
+    <Free_text_2><null/></Free_text_2>
+
+    <!-- Taxation: basic placeholder mapping (no real duty calc) -->
+    <Taxation>
+      <Item_taxes_amount>{{ '%.2f'|format(0) }}</Item_taxes_amount>
+      <Item_taxes_guaranted_amount/>
+      <Item_taxes_mode_of_payment>1</Item_taxes_mode_of_payment>
+      <Counter_of_normal_mode_of_payment/>
+      <Displayed_item_taxes_amount/>
+      <Taxation_line>
+        <Duty_tax_code>10</Duty_tax_code>
+        <Duty_tax_Base>{{ '%.2f'|format(val) }}</Duty_tax_Base>
+        <Duty_tax_rate>0.0</Duty_tax_rate>
+        <Duty_tax_amount>0.00</Duty_tax_amount>
+        <Duty_tax_MP>1</Duty_tax_MP>
+        <Duty_tax_Type_of_calculation><null/></Duty_tax_Type_of_calculation>
+      </Taxation_line>
+      {% for _ in range(5) %}
+      <Taxation_line>
+        <Duty_tax_code><null/></Duty_tax_code><Duty_tax_Base/><Duty_tax_rate/>
+        <Duty_tax_amount/><Duty_tax_MP><null/></Duty_tax_MP><Duty_tax_Type_of_calculation><null/></Duty_tax_Type_of_calculation>
+      </Taxation_line>
+      {% endfor %}
+    </Taxation>
+
+    <!-- Valuation per item: Брутто кг, Нетто кг, totals, invoices -->
+    <Valuation_item>
+      <Weight_itm>
+        <Gross_weight_itm>{{ '%.3f'|format(gross_w) }}</Gross_weight_itm>
+        <Net_weight_itm>{{ '%.3f'|format(net_w) }}</Net_weight_itm>
+      </Weight_itm>
+      <Total_cost_itm>0.0</Total_cost_itm>
+      <Total_CIF_itm>{{ '%.2f'|format(total_cif_itm) }}</Total_CIF_itm>
+      <Rate_of_adjustement>1.0</Rate_of_adjustement>
+      <Statistical_value>{{ '%.2f'|format(val) }}</Statistical_value>
+      <Alpha_coeficient_of_apportionment>{{ '%.12f'|format(alpha) }}</Alpha_coeficient_of_apportionment>
+      <Item_Invoice>
+        <Amount_national_currency>{{ '%.2f'|format(val) }}</Amount_national_currency>
+        <Amount_foreign_currency>{{ '%.2f'|format(val) }}</Amount_foreign_currency>
+        <Currency_code>USD</Currency_code>
+        <Currency_name>Daşary ýurt puly ýok</Currency_name>
+        <Currency_rate>1.0000</Currency_rate>
+      </Item_Invoice>
+      <item_external_freight><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_external_freight>
+      <item_internal_freight><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_internal_freight>
+      <item_insurance><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_insurance>
+      <item_other_cost><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_other_cost>
+      <item_deduction><Amount_national_currency>0.0</Amount_national_currency><Amount_foreign_currency>0.0</Amount_foreign_currency><Currency_code/><Currency_name>Daşary ýurt puly ýok</Currency_name><Currency_rate>0</Currency_rate></item_deduction>
+    </Valuation_item>
+  </Item>
+  {% endfor %}
+
+</ASYCUDA>
+

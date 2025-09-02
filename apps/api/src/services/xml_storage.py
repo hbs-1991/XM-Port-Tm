@@ -161,9 +161,10 @@ class XMLStorageService:
             
             # Check for required elements (flexible by template)
             has_items_root = '<Items' in xml_content
+            has_declaration_root = '<Declaration' in xml_content
             has_asycuda_root = '<ASYCUDA' in xml_content
-            if not (has_items_root or has_asycuda_root):
-                validation_result['errors'].append("Missing required root element: Items or ASYCUDA")
+            if not (has_items_root or has_declaration_root or has_asycuda_root):
+                validation_result['errors'].append("Missing required root element: Items, Declaration, or ASYCUDA")
 
             # Ensure at least one Item exists
             if '<Item' not in xml_content:
