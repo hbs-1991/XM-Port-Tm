@@ -56,7 +56,8 @@
         <!-- Weight information (optional) -->
         <Weights>
             <NetKg>{{ "%.3f"|format(product.quantity) }}</NetKg>
-            <GrossKg>{{ "%.3f"|format(product.quantity * 1.1) }}</GrossKg>
+            {# Avoid float literals with Decimal; use integer ratios #}
+            <GrossKg>{{ "%.3f"|format((product.quantity * 11) / 10) }}</GrossKg>
         </Weights>
         
         <!-- Preference codes (optional) -->
@@ -86,9 +87,10 @@
         <!-- Taxation information (optional) -->
         <Taxation>
             {% if product.value %}
-            <ItemTaxesAmount>{{ "%.2f"|format(product.value * 0.18) }}</ItemTaxesAmount>
+            {# No VAT / taxes by default #}
+            <ItemTaxesAmount>0.00</ItemTaxesAmount>
             <Lines>
-                <!-- Import Duty -->
+                <!-- Import Duty (0%) -->
                 <Line>
                     <DutyTaxCode>A00</DutyTaxCode>
                     <Base>{{ "%.2f"|format(product.value) }}</Base>
@@ -97,12 +99,12 @@
                     <ModeOfPayment>IMMEDIATE</ModeOfPayment>
                     <CalcType>ADVAL</CalcType>
                 </Line>
-                <!-- VAT -->
+                <!-- VAT (0%) -->
                 <Line>
                     <DutyTaxCode>B00</DutyTaxCode>
                     <Base>{{ "%.2f"|format(product.value) }}</Base>
-                    <Rate>18.000000</Rate>
-                    <Amount>{{ "%.2f"|format(product.value * 0.18) }}</Amount>
+                    <Rate>0.000000</Rate>
+                    <Amount>0.00</Amount>
                     <ModeOfPayment>IMMEDIATE</ModeOfPayment>
                     <CalcType>ADVAL</CalcType>
                 </Line>
@@ -113,7 +115,8 @@
         <!-- Valuation information (optional) -->
         <Valuation>
             {% if product.value %}
-            <TotalCIF>{{ "%.2f"|format(product.value * 1.15) }}</TotalCIF>
+            {# CIF = value * 1.15; avoid float literals #}
+            <TotalCIF>{{ "%.2f"|format((product.value * 115) / 100) }}</TotalCIF>
             <StatisticalValue>{{ "%.2f"|format(product.value) }}</StatisticalValue>
             <Invoice>
                 <AmountNational>{{ "%.2f"|format(product.value) }}</AmountNational>

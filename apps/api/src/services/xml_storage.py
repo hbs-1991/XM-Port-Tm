@@ -159,11 +159,15 @@ class XMLStorageService:
             if not xml_content.strip().endswith('>'):
                 validation_result['errors'].append("Incomplete XML structure")
             
-            # Check for required ASYCUDA elements (basic validation)
-            required_elements = ['ASYCUDA', 'Consignment', 'Item']
-            for element in required_elements:
-                if f'<{element}' not in xml_content:
-                    validation_result['errors'].append(f"Missing required element: {element}")
+            # Check for required elements (flexible by template)
+            has_items_root = '<Items' in xml_content
+            has_asycuda_root = '<ASYCUDA' in xml_content
+            if not (has_items_root or has_asycuda_root):
+                validation_result['errors'].append("Missing required root element: Items or ASYCUDA")
+
+            # Ensure at least one Item exists
+            if '<Item' not in xml_content:
+                validation_result['errors'].append("Missing required element: Item")
             
             if validation_result['errors']:
                 validation_result['is_valid'] = False

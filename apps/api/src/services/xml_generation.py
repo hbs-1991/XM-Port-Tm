@@ -448,8 +448,8 @@ class XMLGenerationService:
                     hs_code = hs_code_elem.text.strip()
                     if not hs_code.isdigit():
                         errors.append(f"{item_prefix}HSCode must contain only digits: {hs_code}")
-                    elif len(hs_code) not in [6, 8]:
-                        errors.append(f"{item_prefix}HSCode must be 6 or 8 digits: {hs_code}")
+                    elif len(hs_code) not in [6, 8, 9]:
+                        errors.append(f"{item_prefix}HSCode must be 6, 8, or 9 digits: {hs_code}")
                 
                 # Validate country code (2-letter format)
                 country_code_elem = item.find('.//ns:Code', namespace)
