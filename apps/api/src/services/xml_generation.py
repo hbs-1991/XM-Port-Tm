@@ -475,8 +475,9 @@ class XMLGenerationService:
                 else:
                     desc = next((c for c in list(gd) if local(c.tag) == 'Description_of_goods'), None)
                     origin = next((c for c in list(gd) if local(c.tag) == 'Country_of_origin_code'), None)
-                    if desc is None or (desc.text or '').strip() == '':
-                        errors.append(prefix + "Description_of_goods is required")
+                    # ASYCUDA can auto-populate description by HS code, so allow empty content
+                    if desc is None:
+                        errors.append(prefix + "Missing Description_of_goods")
                     if origin is None or len((origin.text or '').strip()) != 2:
                         errors.append(prefix + "Country_of_origin_code must be 2 letters")
 

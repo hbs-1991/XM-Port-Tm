@@ -363,25 +363,33 @@ async def complete_job_after_hs_matching(
                     message=result["message"]
                 )
             else:
-                # Job completion failed
-                raise HTTPException(
-                    status_code=500,
-                    detail={
-                        "error": "job_completion_failed",
-                        "message": result.get("error", "Failed to complete job"),
-                        "job_id": job_id
-                    }
+                # Return a structured 200 response with failure details to avoid client-breaking 500s
+                return JobCompletionResponse(
+                    success=False,
+                    job_id=job_id,
+                    status="FAILED",
+                    total_products=0,
+                    successful_matches=0,
+                    average_confidence=None,
+                    processing_time_ms=0,
+                    message=result.get("error", "Failed to complete job")
                 )
     
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        # Preserve explicit HTTPExceptions
+        raise e
     except Exception as e:
-        # Log the error for debugging
+        # Log and return a non-exception response to avoid 500s breaking the client flow
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Job completion error for job {job_id}: {str(e)}", exc_info=True)
-        
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to complete job: {str(e)}"
+        return JobCompletionResponse(
+            success=False,
+            job_id=job_id,
+            status="FAILED",
+            total_products=0,
+            successful_matches=0,
+            average_confidence=None,
+            processing_time_ms=0,
+            message=f"Failed to complete job: {str(e)}"
         )

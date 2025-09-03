@@ -298,8 +298,27 @@ class JobManagementService:
                         # Required fields from frontend
                         quantity = Decimal(str(match_data.get('quantity', 1.0)))
                         unit_of_measure = match_data.get('unit_of_measure', 'PCE')
-                        value = Decimal(str(match_data.get('value', 0.0)))
                         origin_country = match_data.get('origin_country', 'XX')
+                        # Optional unit_price/value with backend computation
+                        unit_price_raw = match_data.get('unit_price')
+                        value_raw = match_data.get('value')
+                        if value_raw is not None:
+                            value = Decimal(str(value_raw))
+                        elif unit_price_raw is not None:
+                            value = (Decimal(str(unit_price_raw)) * quantity)
+                        else:
+                            value = Decimal('0.0')
+
+                        # Optional detailed fields
+                        packages_count = match_data.get('packages_count')
+                        packages_part = match_data.get('packages_part')
+                        packaging_kind_code = match_data.get('packaging_kind_code')
+                        packaging_kind_name = match_data.get('packaging_kind_name')
+                        gross_weight = match_data.get('gross_weight')
+                        net_weight = match_data.get('net_weight')
+                        supplementary_quantity = match_data.get('supplementary_quantity')
+                        supplementary_uom_code = match_data.get('supplementary_uom_code')
+                        supplementary_uom_name = match_data.get('supplementary_uom_name')
                     
                     # Validate required fields
                     logger.info(f"Validation - product_description: '{product_description}', matched_hs_code: '{matched_hs_code}', quantity: {quantity}, unit_of_measure: '{unit_of_measure}', value: {value}, origin_country: '{origin_country}'")
@@ -339,12 +358,22 @@ class JobManagementService:
                         quantity=quantity,
                         unit_of_measure=unit_of_measure,
                         value=value,
+                        unit_price=Decimal(str(unit_price_raw)) if unit_price_raw is not None else None,
                         origin_country=origin_country,
                         matched_hs_code=matched_hs_code,
                         confidence_score=Decimal(str(confidence_score)),
                         # The following additional attributes exist on the model
                         alternative_hs_codes=alternative_hs_codes if alternative_hs_codes else None,
                         vector_store_reasoning=vector_store_reasoning,
+                        packages_count=int(packages_count) if packages_count is not None else None,
+                        packages_part=packages_part,
+                        packaging_kind_code=packaging_kind_code,
+                        packaging_kind_name=packaging_kind_name,
+                        gross_weight=Decimal(str(gross_weight)) if gross_weight is not None else None,
+                        net_weight=Decimal(str(net_weight)) if net_weight is not None else None,
+                        supplementary_quantity=Decimal(str(supplementary_quantity)) if supplementary_quantity is not None else None,
+                        supplementary_uom_code=supplementary_uom_code,
+                        supplementary_uom_name=supplementary_uom_name,
                         # Descriptive fields stored if the model supports them
                         requires_manual_review=confidence_score < 0.8,
                         user_confirmed=False,

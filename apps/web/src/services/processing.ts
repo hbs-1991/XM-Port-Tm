@@ -401,6 +401,21 @@ class ProcessingService {
       chapter: string;
       section: string;
       processing_time_ms: number;
+      // The following fields are present on the objects we build in FileUpload
+      quantity: number;
+      unit_of_measure: string;
+      value?: number;
+      unit_price?: number;
+      origin_country: string;
+      packages_count?: number;
+      packages_part?: string;
+      packaging_kind_code?: string;
+      packaging_kind_name?: string;
+      gross_weight?: number;
+      net_weight?: number;
+      supplementary_quantity?: number;
+      supplementary_uom_code?: string;
+      supplementary_uom_name?: string;
     }>,
     processingErrors: string[] = []
   ): Promise<{
@@ -413,36 +428,60 @@ class ProcessingService {
     processing_time_ms: number;
     message: string;
   }> {
-    const response = await this.fetchWithAuth(`/api/v1/processing/jobs/${jobId}/complete`, {
+    // Build payload once
+    const payload = {
+      hs_matches: hsMatches.map(match => ({
+        product_description: match.product_description,
+        matched_hs_code: match.matched_hs_code,
+        confidence_score: match.confidence_score,
+        code_description: match.code_description,
+        chapter: match.chapter,
+        section: match.section,
+        processing_time_ms: match.processing_time_ms,
+        // Include required ProductMatch fields
+        quantity: match.quantity,
+        unit_of_measure: match.unit_of_measure,
+        value: match.value,
+        unit_price: match.unit_price,
+        origin_country: match.origin_country,
+        // Optional detailed fields
+        packages_count: match.packages_count,
+        packages_part: match.packages_part,
+        packaging_kind_code: match.packaging_kind_code,
+        packaging_kind_name: match.packaging_kind_name,
+        gross_weight: match.gross_weight,
+        net_weight: match.net_weight,
+        supplementary_quantity: match.supplementary_quantity,
+        supplementary_uom_code: match.supplementary_uom_code,
+        supplementary_uom_name: match.supplementary_uom_name,
+      })),
+      processing_errors: processingErrors,
+    };
+
+    // Use a specialized request to gracefully handle non-200 responses and surface backend messages
+    const { getSession } = await import('next-auth/react');
+    const session = await getSession();
+    const baseUrl = USE_PROXY ? '/api/proxy' : API_BASE_URL;
+
+    const response = await fetch(`${baseUrl}/api/v1/processing/jobs/${jobId}/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {}),
       },
-      body: JSON.stringify({
-        hs_matches: hsMatches.map(match => ({
-          product_description: match.product_description,
-          matched_hs_code: match.matched_hs_code,
-          confidence_score: match.confidence_score,
-          code_description: match.code_description,
-          chapter: match.chapter,
-          section: match.section,
-          processing_time_ms: match.processing_time_ms,
-          // Include required ProductMatch fields
-          quantity: match.quantity,
-          unit_of_measure: match.unit_of_measure,
-          value: match.value,
-          origin_country: match.origin_country,
-        })),
-        processing_errors: processingErrors,
-      }),
+      body: JSON.stringify(payload),
     });
 
+    // Always try to parse JSON for clearer errors
+    const data = await response.json().catch(() => null);
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail?.message || errorData.message || `Failed to complete job: ${response.status}`);
+      const backendMessage = (data && (data.detail?.message || data.detail || data.message)) || undefined;
+      throw new Error(backendMessage || `Failed to complete job: HTTP ${response.status}`);
     }
 
-    return await response.json();
+    // data should conform to JobCompletionResponse now
+    return data as any;
   }
 }
 

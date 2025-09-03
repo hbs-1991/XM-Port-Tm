@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ASYCUDA>
+  {% set exchange_rate = '3.5' %}
   <!-- Export/Release Section -->
   <Export_release>
     <Date_of_exit/>
@@ -156,42 +157,42 @@
       <Amount_national_currency>0</Amount_national_currency>
       <Currency_code>USD</Currency_code>
       <Currency_name>Daşary ýurt puly ýok</Currency_name>
-      <Currency_rate>3.5</Currency_rate>
+      <Currency_rate>{{ exchange_rate }}</Currency_rate>
     </Gs_Invoice>
     <Gs_external_freight>
       <Amount_national_currency>0.0</Amount_national_currency>
       <Amount_foreign_currency>0.0</Amount_foreign_currency>
       <Currency_code>USD</Currency_code>
       <Currency_name>Daşary ýurt puly ýok</Currency_name>
-      <Currency_rate>3.5</Currency_rate>
+      <Currency_rate>{{ exchange_rate }}</Currency_rate>
     </Gs_external_freight>
     <Gs_internal_freight>
       <Amount_national_currency>0.0</Amount_national_currency>
       <Amount_foreign_currency>0.0</Amount_foreign_currency>
       <Currency_code>USD</Currency_code>
       <Currency_name>Daşary ýurt puly ýok</Currency_name>
-      <Currency_rate>3.5</Currency_rate>
+      <Currency_rate>{{ exchange_rate }}</Currency_rate>
     </Gs_internal_freight>
     <Gs_insurance>
       <Amount_national_currency>0.0</Amount_national_currency>
       <Amount_foreign_currency>0.0</Amount_foreign_currency>
       <Currency_code>USD</Currency_code>
       <Currency_name>Daşary ýurt puly ýok</Currency_name>
-      <Currency_rate>3.5</Currency_rate>
+      <Currency_rate>{{ exchange_rate }}</Currency_rate>
     </Gs_insurance>
     <Gs_other_cost>
       <Amount_national_currency>0.0</Amount_national_currency>
       <Amount_foreign_currency>0.0</Amount_foreign_currency>
       <Currency_code>USD</Currency_code>
       <Currency_name>Daşary ýurt puly ýok</Currency_name>
-      <Currency_rate>3.5</Currency_rate>
+      <Currency_rate>{{ exchange_rate }}</Currency_rate>
     </Gs_other_cost>
     <Gs_deduction>
       <Amount_national_currency>0.0</Amount_national_currency>
       <Amount_foreign_currency>0.0</Amount_foreign_currency>
       <Currency_code>USD</Currency_code>
       <Currency_name>Daşary ýurt puly ýok</Currency_name>
-      <Currency_rate>3.5</Currency_rate>
+      <Currency_rate>{{ exchange_rate }}</Currency_rate>
     </Gs_deduction>
     <Total><Total_invoice>{{ '%.2f'|format(summary.total_value) }}</Total_invoice><Total_weight>{{ '%.3f'|format(summary.total_quantity) }}</Total_weight></Total>
   </Valuation>
@@ -209,9 +210,9 @@
   {% set uom_name_map = {'PCS':'Sany','PCE':'Sany','KG':'Kilogram'} %}
   {% set uom_code = uom_code_map.get(unit, '796') %}
   {% set uom_name = uom_name_map.get(unit, unit) %}
-  {% set unit_price = (val / qty) if (val and qty) else 0 %}
-  {% set net_w = product.net_weight if product.net_weight is defined and product.net_weight else qty %}
-  {% set gross_w = product.gross_weight if product.gross_weight is defined and product.gross_weight else (qty * 11 / 10) %}
+  {% set unit_price = (product.unit_price if product.unit_price is defined and product.unit_price else ((val / qty) if (val and qty) else 0)) %}
+  {% set net_w = product.net_weight if product.net_weight is defined and product.net_weight else 0 %}
+  {% set gross_w = product.gross_weight if product.gross_weight is defined and product.gross_weight else 0 %}
   {% set packages = product.packages_count if product.packages_count is defined and product.packages_count else 1 %}
   {% set packages_part = product.packages_part if product.packages_part is defined else '' %}
   {% set pack_code = product.packaging_kind_code if product.packaging_kind_code is defined and product.packaging_kind_code else 'CTN' %}
@@ -335,6 +336,7 @@
         <Duty_tax_amount/><Duty_tax_MP><null/></Duty_tax_MP><Duty_tax_Type_of_calculation><null/></Duty_tax_Type_of_calculation>
       </Taxation_line>
       {% endfor %}
+      </Item_taxes_amount>
     </Taxation>
 
     <!-- Valuation per item: Брутто кг, Нетто кг, totals, invoices -->
@@ -349,50 +351,50 @@
       <Statistical_value>0.0</Statistical_value>
       <Alpha_coeficient_of_apportionment>0.0</Alpha_coeficient_of_apportionment>
       <Item_Invoice>
-        <Amount_national_currency>{{ '%.2f'|format(val) * 3.5 }}</Amount_national_currency>
+        {# Avoid Decimal * float. Use integer math: 3.5 == 35/10 #}
+        <Amount_national_currency>{{ '%.2f'|format((val * 35) / 10) }}</Amount_national_currency>
         <Amount_foreign_currency>{{ '%.2f'|format(val) }}</Amount_foreign_currency>
         <Currency_code>USD</Currency_code>
         <Currency_name>Daşary ýurt puly ýok</Currency_name>
-        <Currency_rate>3.5</Currency_rate>
+        <Currency_rate>{{ exchange_rate }}</Currency_rate>
       </Item_Invoice>
       <item_external_freight>
         <Amount_national_currency>0.0</Amount_national_currency>
         <Amount_foreign_currency>0.0</Amount_foreign_currency>
         <Currency_code>USD</Currency_code>
         <Currency_name>Daşary ýurt puly ýok</Currency_name>
-        <Currency_rate>3.5</Currency_rate>
+        <Currency_rate>{{ exchange_rate }}</Currency_rate>
       </item_external_freight>
       <item_internal_freight>
         <Amount_national_currency>0.0</Amount_national_currency>
         <Amount_foreign_currency>0.0</Amount_foreign_currency>
         <Currency_code>USD</Currency_code>
         <Currency_name>Daşary ýurt puly ýok</Currency_name>
-        <Currency_rate>3.5</Currency_rate>
+        <Currency_rate>{{ exchange_rate }}</Currency_rate>
       </item_internal_freight>
       <item_insurance>
         <Amount_national_currency>0.0</Amount_national_currency>
         <Amount_foreign_currency>0.0</Amount_foreign_currency>
         <Currency_code>USD</Currency_code>
         <Currency_name>Daşary ýurt puly ýok</Currency_name>
-        <Currency_rate>3.5</Currency_rate>
+        <Currency_rate>{{ exchange_rate }}</Currency_rate>
       </item_insurance>
       <item_other_cost>
         <Amount_national_currency>0.0</Amount_national_currency>
         <Amount_foreign_currency>0.0</Amount_foreign_currency>
         <Currency_code>USD</Currency_code>
         <Currency_name>Daşary ýurt puly ýok</Currency_name>
-        <Currency_rate>3.5</Currency_rate>
+        <Currency_rate>{{ exchange_rate }}</Currency_rate>
       </item_other_cost>
       <item_deduction>
         <Amount_national_currency>0.0</Amount_national_currency>
         <Amount_foreign_currency>0.0</Amount_foreign_currency>
         <Currency_code>USD</Currency_code>
         <Currency_name>Daşary ýurt puly ýok</Currency_name>
-        <Currency_rate>3.5</Currency_rate>
+        <Currency_rate>{{ exchange_rate }}</Currency_rate>
       </item_deduction>
     </Valuation_item>
   </Item>
   {% endfor %}
 
 </ASYCUDA>
-

@@ -172,11 +172,22 @@ class HSMatchResult(BaseModel):
     chapter: str = Field(..., description="HS code chapter")
     section: str = Field(..., description="HS code section")
     processing_time_ms: float = Field(..., description="Processing time in milliseconds")
-    # Required ProductMatch fields
+    # Required ProductMatch fields (value can be computed from unit_price × quantity)
     quantity: float = Field(..., gt=0, description="Product quantity")
-    unit_of_measure: str = Field(..., description="Unit of measure")
-    value: float = Field(..., gt=0, description="Product value (quantity × unit_price)")
+    unit_of_measure: str = Field(..., description="Unit of measure (code)")
     origin_country: str = Field(..., description="Origin country")
+    value: Optional[float] = Field(None, description="Product value; if missing, computed from unit_price × quantity")
+    unit_price: Optional[float] = Field(None, description="Unit price; used to compute value if value is missing")
+    # Optional detailed fields
+    packages_count: Optional[int] = Field(None, description="Number of packages")
+    packages_part: Optional[str] = Field(None, description="Partial packages")
+    packaging_kind_code: Optional[str] = Field(None, description="Packaging kind code")
+    packaging_kind_name: Optional[str] = Field(None, description="Packaging kind name")
+    gross_weight: Optional[float] = Field(None, description="Gross weight (kg)")
+    net_weight: Optional[float] = Field(None, description="Net weight (kg)")
+    supplementary_quantity: Optional[float] = Field(None, description="Supplementary unit quantity")
+    supplementary_uom_code: Optional[str] = Field(None, description="Supplementary UOM code")
+    supplementary_uom_name: Optional[str] = Field(None, description="Supplementary UOM name")
 
 
 class JobCompletionRequest(BaseModel):

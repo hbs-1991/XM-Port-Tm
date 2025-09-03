@@ -711,8 +711,18 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'TKM' }:
               // Include required ProductMatch fields from original data
               quantity,
               unit_of_measure: unit,
-              value: totalValue,
+              // Prefer passing unit_price and let backend compute value
+              unit_price: unitPrice,
+              value: totalValue, // kept for backward compatibility
               origin_country,
+              // Packaging and weights
+              packages_count: parseInt((originalRow as any)['Количество мест'] || (originalRow as any)['package_quantity'] || '1', 10) || 1,
+              packages_part: (originalRow as any)['Часть мест'] || (originalRow as any)['package_part'] || '',
+              packaging_kind_code: (originalRow as any)['Вид упаковки'] || (originalRow as any)['package_type'] || '',
+              gross_weight: parseFloat((originalRow as any)['Брутто кг'] || (originalRow as any)['gross_weight'] || '') || 0,
+              net_weight: parseFloat((originalRow as any)['Нетто кг'] || (originalRow as any)['net_weight'] || '') || 0,
+              supplementary_quantity: ((v => isNaN(parseFloat(v)) ? undefined : parseFloat(v))(((originalRow as any)['Количество в дополнительной ед. изм.'] || (originalRow as any)['additional_quantity'] || '') as string)),
+              supplementary_uom_code: (originalRow as any)['Дополнительная ед. изм.'] || (originalRow as any)['additional_unit'] || undefined,
             };
             
             console.log(`📦 Created result object for row ${index}:`, resultObject);
@@ -731,7 +741,8 @@ export function FileUpload({ onUploadComplete, onError, countrySchema = 'TKM' }:
           
           // Validate data before sending
           const validMatches = hsMatches.filter(match => {
-            const isValid = match.quantity > 0 && match.value > 0 && match.unit_of_measure && match.origin_country;
+            const hasPositiveValue = (typeof match.value === 'number' && match.value > 0) || (typeof match.unit_price === 'number' && match.unit_price > 0);
+            const isValid = match.quantity > 0 && hasPositiveValue && !!match.unit_of_measure && !!match.origin_country;
             if (!isValid) {
               console.error(`❌ Invalid match data:`, match);
             }
