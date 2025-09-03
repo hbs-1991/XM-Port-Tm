@@ -206,17 +206,17 @@
   {% set qty = product.quantity %}
   {% set val = product.value if product.value else 0 %}
   {% set unit = product.unit_of_measure if product.unit_of_measure else 'PCS' %}
-  {% set uom_code_map = {'PCS':'796','PCE':'796','KG':'166'} %}
-  {% set uom_name_map = {'PCS':'Sany','PCE':'Sany','KG':'Kilogram'} %}
-  {% set uom_code = uom_code_map.get(unit, '796') %}
-  {% set uom_name = uom_name_map.get(unit, unit) %}
+  {% set uom_code_map = {'PCS':'796','PCE':'796','KG':'166','796':'796','166':'166'} %}
+  {% set uom_name_map = {'PCS':'Sany','PCE':'Sany','KG':'Kilogram','796':'Sany','166':'Kilogram'} %}
+  {% set uom_code = uom_code_map.get(unit, unit if unit else '796') %}
+  {% set uom_name = uom_name_map.get(unit, (unit if unit else 'PCS')) %}
   {% set unit_price = (product.unit_price if product.unit_price is defined and product.unit_price else ((val / qty) if (val and qty) else 0)) %}
-  {% set net_w = product.net_weight if product.net_weight is defined and product.net_weight else 0 %}
-  {% set gross_w = product.gross_weight if product.gross_weight is defined and product.gross_weight else 0 %}
-  {% set packages = product.packages_count if product.packages_count is defined and product.packages_count else 1 %}
-  {% set packages_part = product.packages_part if product.packages_part is defined else '' %}
-  {% set pack_code = product.packaging_kind_code if product.packaging_kind_code is defined and product.packaging_kind_code else 'CTN' %}
-  {% set pack_name = product.packaging_kind_name if product.packaging_kind_name is defined and product.packaging_kind_name else 'Carton' %}
+  {% set net_w = product.net_weight if product.net_weight is defined and product.net_weight is not none else qty %}
+  {% set gross_w = product.gross_weight if product.gross_weight is defined and product.gross_weight is not none else (qty * 11 / 10) %}
+  {% set packages = product.packages_count if product.packages_count is defined and product.packages_count is not none else 1 %}
+  {% set packages_part = (product.packages_part if product.packages_part is defined and product.packages_part is not none else '') %}
+  {% set pack_code = (product.packaging_kind_code if product.packaging_kind_code is defined and product.packaging_kind_code is not none else '') %}
+  {% set pack_name = (product.packaging_kind_name if product.packaging_kind_name is defined and product.packaging_kind_name is not none else '') %}
   {% set pref_reg = product.preference_reg if product.preference_reg is defined and product.preference_reg else '00' %}
   {% set pref_dut = product.preference_dut if product.preference_dut is defined and product.preference_dut else '00' %}
   {% set pref_exc = product.preference_exc if product.preference_exc is defined and product.preference_exc else '00' %}
@@ -232,11 +232,11 @@
 <!-- Packages mapping: Количество мест, Часть мест, Вид упаковки -->
     <Packages>
       <Number_of_packages>{{ packages }}</Number_of_packages>
-      <Partial_packages>{{ packages_part }}</Partial_packages>
+      <Partial_packages>{{ packages_part|default('', true) }}</Partial_packages>
       <Marks1_of_packages>{{ product.product_description|e|truncate(512, True) }}</Marks1_of_packages>
       <Marks2_of_packages><null/></Marks2_of_packages>
-      <Kind_of_packages_code>{{ pack_code }}</Kind_of_packages_code>
-      <Kind_of_packages_name>{{ pack_name }}</Kind_of_packages_name>
+      <Kind_of_packages_code>{{ pack_code|default('', true) }}</Kind_of_packages_code>
+      <Kind_of_packages_name>{{ pack_name|default('', true) }}</Kind_of_packages_name>
     </Packages>
 
     <!-- Tarification block: Quantity, UOM, Price, Procedure, Preference, BKU -->
@@ -270,9 +270,9 @@
         </QuotaItem>
       </Quota>      
       <Supplementary_unit>
-        <Suppplementary_unit_quantity>{{ sup_qty }}</Suppplementary_unit_quantity>
-        <Suppplementary_unit_code>{{ sup_code }}</Suppplementary_unit_code>
-        <Suppplementary_unit_name>{{ sup_name }}</Suppplementary_unit_name>
+        <Suppplementary_unit_quantity>{{ sup_qty|default('', true) }}</Suppplementary_unit_quantity>
+        <Suppplementary_unit_code>{{ sup_code|default('', true) }}</Suppplementary_unit_code>
+        <Suppplementary_unit_name>{{ sup_name|default('', true) }}</Suppplementary_unit_name>
       </Supplementary_unit>
       <Valuation_method_code>1</Valuation_method_code>
       <Value_item>0,00+0,00+0,00+0,00-0,00</Value_item>

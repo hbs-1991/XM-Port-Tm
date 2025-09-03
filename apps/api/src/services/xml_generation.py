@@ -279,6 +279,51 @@ class XMLGenerationService:
             hs_code_summary[hs_code]['total_value'] += Decimal(str(pm.value))
             hs_code_summary[hs_code]['products'].append(pm)
         
+        # Normalize products into plain dicts with safe defaults
+        normalized_products: List[Dict[str, Any]] = []
+        for pm in product_matches:
+            # Use getattr to be resilient to missing attrs
+            def g(name: str, default: Any = None):
+                return getattr(pm, name, default)
+
+            qty = g('quantity')
+            val = g('value')
+            unit_price = g('unit_price')
+            if (val is None or (isinstance(val, (int, float, Decimal)) and Decimal(str(val)) == Decimal('0'))) and unit_price is not None and qty is not None:
+                try:
+                    val = Decimal(str(unit_price)) * Decimal(str(qty))
+                except Exception:
+                    pass
+
+            normalized_products.append({
+                'product_description': g('product_description', ''),
+                'matched_hs_code': g('matched_hs_code', ''),
+                'confidence_score': g('confidence_score', Decimal('0')),
+                'quantity': qty or Decimal('0'),
+                'unit_of_measure': g('unit_of_measure', ''),
+                'value': val or Decimal('0'),
+                'unit_price': unit_price,
+                'origin_country': g('origin_country', ''),
+                # Packaging and weights
+                'packages_count': g('packages_count'),
+                'packages_part': g('packages_part'),
+                'packaging_kind_code': g('packaging_kind_code'),
+                'packaging_kind_name': g('packaging_kind_name'),
+                'gross_weight': g('gross_weight'),
+                'net_weight': g('net_weight'),
+                # Supplementary
+                'supplementary_quantity': g('supplementary_quantity'),
+                'supplementary_uom_code': g('supplementary_uom_code'),
+                'supplementary_uom_name': g('supplementary_uom_name'),
+                # Optional customs preferences if present
+                'preference_reg': g('preference_reg'),
+                'preference_dut': g('preference_dut'),
+                'preference_exc': g('preference_exc'),
+                'extended_customs_procedure': g('extended_customs_procedure'),
+                'national_customs_procedure': g('national_customs_procedure'),
+                'bku': g('bku')
+            })
+
         # Create template context
         context = {
             # Job metadata
@@ -302,7 +347,7 @@ class XMLGenerationService:
             },
             
             # Product data
-            'products': product_matches,
+            'products': normalized_products,
             'product_count': len(product_matches),
             
             # Summary statistics
