@@ -323,6 +323,7 @@ async def complete_job_after_hs_matching(
             for i, match in enumerate(completion_request.hs_matches):
                 logger.info(f"API Processing match {i}: product_description='{match.product_description}', quantity={getattr(match, 'quantity', 'MISSING')}, unit_of_measure='{getattr(match, 'unit_of_measure', 'MISSING')}', value={getattr(match, 'value', 'MISSING')}, origin_country='{getattr(match, 'origin_country', 'MISSING')}'")
                 
+                # Base required fields
                 match_dict = {
                     'product_description': match.product_description,
                     'matched_hs_code': match.matched_hs_code,
@@ -338,6 +339,28 @@ async def complete_job_after_hs_matching(
                     'origin_country': getattr(match, 'origin_country', None),
                     'alternative_matches': []  # Frontend doesn't send alternatives currently
                 }
+
+                # Optional pricing field used to compute value if value is missing
+                unit_price = getattr(match, 'unit_price', None)
+                if unit_price is not None:
+                    match_dict['unit_price'] = unit_price
+
+                # Optional detailed logistics/weights fields (pass-through if provided)
+                optional_fields = [
+                    'packages_count',
+                    'packages_part',
+                    'packaging_kind_code',
+                    'packaging_kind_name',
+                    'gross_weight',
+                    'net_weight',
+                    'supplementary_quantity',
+                    'supplementary_uom_code',
+                    'supplementary_uom_name',
+                ]
+                for field in optional_fields:
+                    val = getattr(match, field, None)
+                    if val is not None:
+                        match_dict[field] = val
                 hs_matches_dict.append(match_dict)
                 logger.info(f"API Created match dict {i}: {match_dict}")
             
