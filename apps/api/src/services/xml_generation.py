@@ -185,11 +185,17 @@ class XMLGenerationService:
             # Generate download URL
             download_url = None
             if storage_result.get('s3_key'):
+                # S3 storage: produce a pre-signed URL for download
                 try:
                     download_url = storage_service.generate_download_url(storage_result['s3_key'])
                 except Exception as e:
                     logger.warning(f"Failed to generate download URL: {str(e)}")
-            
+            else:
+                # Local storage (development fallback): use the returned direct URL
+                # so the API can mark the job as having XML output
+                if storage_result.get('url'):
+                    download_url = storage_result.get('url')
+
             logger.info(
                 f"Successfully generated and stored XML for job {processing_job.id} "
                 f"with {len(product_matches)} products, size: {storage_result.get('file_size', 0)} bytes"
